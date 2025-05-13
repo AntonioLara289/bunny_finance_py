@@ -1,0 +1,2 @@
+~env~/lib/python3.12/site-packages/PySide6/Qt/lib/libQt6WebEngineCore.so.6~ filter=lfs diff=lfs merge=lfs -text
+env~/lib/python3.12/site-packages/PySide6/Qt/lib/libQt6WebEngineCore.so.6 filter=lfs diff=lfs merge=lfs -text

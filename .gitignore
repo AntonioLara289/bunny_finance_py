@@ -1,2 +1,19 @@
+# .gitignore
+# Entorno virtual
+.venv/
+venv/
 
-finanza.db
+# Archivos de Python compilados
+__pycache__/
+*.py[cod]
+
+# Configuraciones del sistema o IDE
+*.log
+*.sqlite3
+.DS_Store
+.env
+.idea/
+.vscode/
+
+# Archivos de dependencia de MediaPipe y OpenCV
+opencv_cache/
