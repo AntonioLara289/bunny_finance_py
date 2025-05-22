@@ -31,6 +31,14 @@ class CameraWidget(QWidget):
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(30)
 
+        known_image = face_recognition.load_image_file("src/img/gabe.jpeg")
+        self.known_encodings = face_recognition.face_encodings(known_image)[0]
+
+        if not self.known_encodings:
+            print("❌ No se encontró rostro en la imagen conocida.")
+            exit()
+
+
     def update_frame(self):
         ret, frame = self.cap.read()
         if not ret:
@@ -39,35 +47,51 @@ class CameraWidget(QWidget):
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_detection.process(rgb_frame)
 
-        if results.detections:
+        if results.detections is not None:
             h, w, _ = rgb_frame.shape
 
             for detection in results.detections:
                 # Dibujar la detección
                 self.mp_drawing.draw_detection(rgb_frame, detection)
 
-                # Obtener bbox relativa
+                # Bounding box relativa
                 bbox = detection.location_data.relative_bounding_box
                 x = int(bbox.xmin * w)
                 y = int(bbox.ymin * h)
                 width = int(bbox.width * w)
                 height = int(bbox.height * h)
 
-                # Asegurar que los valores estén dentro del frame
+                # Asegurar límites válidos
                 x = max(0, x)
                 y = max(0, y)
                 x2 = min(w, x + width)
                 y2 = min(h, y + height)
 
+                # Evitar recortes inválidos
+                if x2 <= x or y2 <= y:
+                    continue
+
                 # Recortar rostro
                 face_crop = rgb_frame[y:y2, x:x2]
 
-                # Obtener embeddings faciales
-                face_encodings = face_recognition.face_encodings(face_crop)
+                # Algunos modelos requieren al menos 1 canal, tamaño mínimo, etc.
+                if face_crop.size == 0:
+                    continue
+                
+                # 👉 Ahora usar face_recognition para obtener los encodings
+                face_locations = face_recognition.face_locations(rgb_frame)
+                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+
                 if face_encodings:
-                    # print("🧬 Embedding facial (vector de 128D):")
-                    # print(face_encodings[0])  # Puedes guardarlo en DB o compararlo
-                    height
+                    encoding = face_encodings[0]
+                    print("✅ Encoding obtenido:", encoding)
+                else:
+                    print("⚠️ No se pudo obtener el encoding con face_recognition")
+
+                resultados = face_recognition.compare_faces(self.known_encodings, face_encodings)
+                distancia = face_recognition.face_distance(self.known_encodings, face_encodings)[0]
+
+                print(resultados)
 
         # Convertir para mostrar en QLabel
         h, w, ch = rgb_frame.shape

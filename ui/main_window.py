@@ -48,23 +48,22 @@ class MainWindow(QtWidgets.QWidget):
         self.button.clicked.connect(self.magic)
         self.modal_button.clicked.connect(self.mostrar_camara)
 
-        self.db = DBManager()
-        self.data = self.db.getBalances()
+        # self.db = DBManager()
+        # self.data = self.db.getBalances()
+        # if self.data:
 
-        if self.data:
+        #     for fila in self.data:
 
-            for fila in self.data:
+        #         id_balance, balance, created_at = fila
 
-                id_balance, balance, created_at = fila
+        #         id = QtWidgets.QLabel(str(id_balance), alignment = QtCore.Qt.AlignCenter)
 
-                id = QtWidgets.QLabel(str(id_balance), alignment = QtCore.Qt.AlignCenter)
+        #         # self.layout.addWidget(id)
+        #         print(fila)
 
-                # self.layout.addWidget(id)
-                print(fila)
+        # else:
 
-        else:
-
-            print("No hay datos de balance")
+        #     print("No hay datos de balance")
 
         # print(self.data)
 
