@@ -20,7 +20,7 @@ class CameraWidget(QWidget):
 
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
-            self.label.setText("❌ No se pudo abrir la cámara.")
+            self.label.setText("No se pudo abrir la cámara.")
             return
 
         self.mp_face_detection = mp.solutions.face_detection
@@ -35,7 +35,7 @@ class CameraWidget(QWidget):
         self.known_encodings = face_recognition.face_encodings(known_image)[0]
 
         if not self.known_encodings:
-            print("❌ No se encontró rostro en la imagen conocida.")
+            print("No se encontró rostro en la imagen conocida.")
             exit()
 
 
@@ -51,8 +51,9 @@ class CameraWidget(QWidget):
             h, w, _ = rgb_frame.shape
 
             for detection in results.detections:
+
                 # Dibujar la detección
-                self.mp_drawing.draw_detection(rgb_frame, detection)
+                # self.mp_drawing.draw_detection(rgb_frame, detection)
 
                 # Bounding box relativa
                 bbox = detection.location_data.relative_bounding_box
@@ -78,26 +79,33 @@ class CameraWidget(QWidget):
                 if face_crop.size == 0:
                     continue
                 
-                # 👉 Ahora usar face_recognition para obtener los encodings
+                # Ahora usar face_recognition para obtener los encodings
                 face_locations = face_recognition.face_locations(rgb_frame)
                 face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
                 if face_encodings:
                     encoding = face_encodings[0]
-                    print("✅ Encoding obtenido:", encoding)
+                    print("Encoding obtenido:", encoding)
+                    resultados = face_recognition.compare_faces(self.known_encodings, face_encodings)
+                    distancia = face_recognition.face_distance(self.known_encodings, face_encodings)[0]
+                    print(f'Validación de comparación de datos biometricos', resultados)
+
+                    if True in resultados:
+                        print(f'Persona identificada como Gabe Newell')
+                    else:
+                        print(f'La persona no es Gabe Newell')
+
                 else:
-                    print("⚠️ No se pudo obtener el encoding con face_recognition")
+                    # No se pudo obtener el encoding con face_recognition
+                    print("No se detectó algun rostro")
 
-                resultados = face_recognition.compare_faces(self.known_encodings, face_encodings)
-                distancia = face_recognition.face_distance(self.known_encodings, face_encodings)[0]
 
-                print(resultados)
 
         # Convertir para mostrar en QLabel
         h, w, ch = rgb_frame.shape
         bytes_per_line = ch * w
-        qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        self.label.setPixmap(QPixmap.fromImage(qt_image))
+        # qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        # self.label.setPixmap(QPixmap.fromImage(qt_image))
 
     def closeEvent(self, event):
         self.cap.release()

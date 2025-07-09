@@ -37,7 +37,7 @@ class MainWindow(QtWidgets.QWidget):
 
         self.button = QtWidgets.QPushButton("Click me!")
         self.text = QtWidgets.QLabel("Hello World", alignment=QtCore.Qt.AlignCenter)
-        self.modal_button = QtWidgets.QPushButton("Open Modal")
+        self.modal_button = QtWidgets.QPushButton("Iniciar Escaneo")
 
         self.layout = QtWidgets.QVBoxLayout(self)
         # self.layout.addWidget(self.slider)
