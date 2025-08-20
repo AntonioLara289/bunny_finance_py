@@ -7,8 +7,8 @@ if __name__ == "__main__":
 
     window = MainWindow()
     # window.resize(800, 600)
-    window.showMaximized()
-    window.show()
-    print("main.")
+    # window.showMaximized()
+    # window.show()
+    # print("main.")
 
     sys.exit(app.exec())

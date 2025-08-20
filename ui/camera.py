@@ -1,6 +1,6 @@
 # camera_widget.py
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 import cv2
 import mediapipe as mp
@@ -8,6 +8,15 @@ import face_recognition
 import numpy as np
 
 class CameraWidget(QWidget):
+
+    camera_is_active = False
+    frame_camera = ""
+    calculoHecho = Signal(int)
+
+    def hacer_calculo(self):
+        resultado = 7 * range(1,100)  # ejemplo
+        self.calculoHecho.emit(resultado)
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -19,6 +28,7 @@ class CameraWidget(QWidget):
         self.setLayout(layout)
 
         self.cap = cv2.VideoCapture(0)
+
         if not self.cap.isOpened():
             self.label.setText("No se pudo abrir la cámara.")
             return
@@ -41,6 +51,9 @@ class CameraWidget(QWidget):
 
     def update_frame(self):
         ret, frame = self.cap.read()
+
+        self.frame_camera = frame
+
         if not ret:
             return
 
@@ -104,10 +117,18 @@ class CameraWidget(QWidget):
         # Convertir para mostrar en QLabel
         h, w, ch = rgb_frame.shape
         bytes_per_line = ch * w
-        # qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        # self.label.setPixmap(QPixmap.fromImage(qt_image))
+        qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        self.label.setPixmap(QPixmap.fromImage(qt_image))
 
     def closeEvent(self, event):
         self.cap.release()
         self.timer.stop()
         super().closeEvent(event)
+
+    def switchCamera(self):
+        if self.camera_is_active:
+            self.camera_is_active = False
+            cv2.imshow('Live Camera Feed', self.frame_camera)
+        else:
+            self.camera_is_active = True
+            cv2.destroyAllWindows()
