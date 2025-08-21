@@ -1,8 +1,14 @@
 import sys
 import random
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtCore import (
+    QSize, 
+    Qt
+)
+from PySide6.QtGui import (
+    QAction, 
+    QIcon,
+    QKeySequence)
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -10,13 +16,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QStatusBar,
     QToolBar,
-)
-from PySide6.QtCore import Qt
-from database.db_manager import DBManager
-from ui.camera import CameraWidget
-from ui.calculo import Calculo
-from ui.escaneoRostro import EscanerRostro
-from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QLabel,
@@ -25,8 +24,12 @@ from PySide6.QtWidgets import (
     QToolBar,
     QWidgetAction
 )
-
-
+from PySide6.QtCore import Qt
+from database.db_manager import DBManager
+from ui.camera import CameraWidget
+from ui.calculo import Calculo
+from ui.escaneoRostro import EscanerRostro
+from ui.Historial import Historial
 try:
     import cv2
     import face_recognition
@@ -37,8 +40,8 @@ try:
     print("MediaPipe importado correctamente")
 
     # Probar versiones (opcional)
-    print("OpenCV versión:", cv2.__version__)
-    print("MediaPipe versión:", mp.__version__)
+    # print("OpenCV versión:", cv2.__version__)
+    # print("MediaPipe versión:", mp.__version__)
     
     # Prueba mínima de funcionalidad
     mp_face_detection = mp.solutions.face_detection
@@ -51,29 +54,25 @@ except Exception as e:
     print("Otro error:", e)
 
 class MainWindow(QtWidgets.QMainWindow):
+
+    titulo_ventana = "Bunny Detect"
+
     def __init__(self):
         super().__init__()
+        self.setWindowTitle(self.titulo_ventana) # Set the initial window title
+        self.setGeometry(100, 100, 400, 300) # (x, y, width, height)
 
+        # StackedWidget como central
         self.stack = QtWidgets.QStackedWidget()
-        label = QLabel("Hello!")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.setCentralWidget(label)
-
-        toolbar = QToolBar("My main toolbar")
-        self.addToolBar(toolbar)
         self.setCentralWidget(self.stack)
 
-        button_action = QAction("Your button", self)
-        button_action.setStatusTip("This is your button")
-        button_action.triggered.connect(self.toolbar_button_clicked)
-        toolbar.addAction(button_action)
-
+        # Agregar pantallas
         self.escaneoRostro = EscanerRostro()
+        self.stack.addWidget(self.escaneoRostro)
 
-        self.escaneoRostro.showMaximized()
-        self.escaneoRostro.show()
-
+        # Mostrar esa pantalla
+        self.stack.setCurrentWidget(self.escaneoRostro)
+        
         # self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
 
         # self.button = QtWidgets.QPushButton("Click me!")
@@ -95,9 +94,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # self.switchCamera.clicked.connect(CameraWidget.switchCamera())
 
-
     def toolbar_button_clicked(self, s):
-            print("click", s)
+        print("click", s)
 
     def show_modal(self):
         pass
@@ -141,3 +139,47 @@ class MainWindow(QtWidgets.QMainWindow):
         print("El cálculo recibido desde cámara es:", valor)
         # Aquí ya puedes guardarlo en una variable, mostrarlo en un QLabel, etc.
         self.text.setText(f"Cálculo: {valor}")
+
+    def mostrarVistaHistorial(self):
+        print("Mostrando la vista de historial")
+        # Agregar pantallas
+        self.historial = Historial()
+        self.stack.addWidget(self.historial)
+
+        # Mostrar esa pantalla
+        self.stack.setCurrentWidget(self.historial)
+
+
+    def mostrarVistaEscaneo(self):
+        print("Mostrando la vista de escaneo")
+        # Agregar pantallas
+        self.escaneoRostro = EscanerRostro()
+        self.stack.addWidget(self.escaneoRostro)
+
+        # Mostrar esa pantalla
+        self.stack.setCurrentWidget(self.escaneoRostro)
+
+    def inicializarBotonEscaneo(window, file_menu):
+        button_escaneo_rostro = QAction("Escaneo De Rostro", window)
+        button_escaneo_rostro.setStatusTip("Escaneo de rostro con cámara")
+        
+        # lo agregas al menú o toolbar
+        file_menu.addAction(button_escaneo_rostro)
+
+        # conectas la acción
+        button_escaneo_rostro.triggered.connect(lambda: window.mostrarVistaEscaneo())
+        return button_escaneo_rostro
+
+
+    def inicializarBotonRegistro(window, file_menu):
+        button_historial_registro = QAction("Historial de registro", window)
+        button_historial_registro.setStatusTip("Historial de las detecciones")
+        
+        # lo agregas al menú o toolbar
+        file_menu.addAction(button_historial_registro)
+
+        # conectas la acción
+        button_historial_registro.triggered.connect(lambda: window.mostrarVistaHistorial())
+        return button_historial_registro
+
+
