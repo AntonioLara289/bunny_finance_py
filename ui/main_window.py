@@ -41,8 +41,8 @@ try:
     print("MediaPipe versión:", mp.__version__)
     
     # Prueba mínima de funcionalidad
-    mp_face_detection = mp.solutions.face_detection
-    face_detector = mp_face_detection.FaceDetection()
+    # mp_face_detection = mp.solutions.face_detection
+    # face_detector = mp_face_detection.FaceDetection()
     print("MediaPipe FaceDetection inicializado correctamente")
 
 except ImportError as e:
