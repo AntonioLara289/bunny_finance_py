@@ -2,12 +2,15 @@ from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtWidgets import (
     QPushButton,
     QLabel,
-    QApplication
+    QLineEdit,
+    QScrollArea,
+    QWidget,
+    QDialog
 )
 from PySide6.QtGui import (
     QImage,
     QPixmap,
-    QGuiApplication
+    QGuiApplication,
 )
 from PySide6.QtCore import (
     QTimer,
@@ -16,31 +19,74 @@ from PySide6.QtCore import (
 import mediapipe as mp
 import face_recognition
 import cv2
+from ui.dialogs.example import DialogExample
+from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
+from database.db_manager import DBManager
 
 class EscanerRostro(QtWidgets.QWidget):
     
     def __init__(self):
         super().__init__()
+        
+        self.directorio_guardar = "src/capturas_personas/"
+
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(QtWidgets.QLabel("Soy la pantalla de escaner"))
 
-        self.boton_abrir_camara = self.botonInicializarCamara()
-        self.boton_cerrar_camara = self.botonCerrarCamara()
-        
-        self.cam_live = QLabel(self)
-        self.foto_de_camara = QLabel(self)
+        scroll_area = QScrollArea()
+        self.layout.addWidget(scroll_area)
+        # self.foto_capturada = None
+        self.encoding_foto_capturada = None
 
+        self.dbManager = DBManager()
 
-        self.layout.addWidget(self.cam_live, alignment=Qt.AlignCenter)
-        self.layout.addWidget(self.foto_de_camara)
-        self.layout.addWidget(self.boton_abrir_camara)
-        self.layout.addWidget(self.boton_cerrar_camara)
+        self.getPersonas = self.dbManager.getPersonasData()
 
-        #La ocultamos ya que la mostrará y ocultara muchas veces
-        self.boton_cerrar_camara.hide()
+        # Add your content (e.g., many QLabels) to content_layout
+        #ESTO AGREGA SOLO 20 Items para el apartado del scroll pero fue destacado por la ventana modal
+        # for i in range(20):
+        #     content_layout.addWidget(QLabel(f"Item {i}"))
+
+        # scroll_area.setWidget(content_widget)
 
         self.pantalla = QGuiApplication.primaryScreen()
         self.medidas_pantalla = self.pantalla.size()
+
+        self.boton_abrir_camara = self.botonInicializarCamara()
+        self.boton_cerrar_camara = self.botonCerrarCamara()
+        self.boton_guardar_foto = self.botonGuardarFoto()
+
+        self.frame_camera = QLabel(self)
+        self.cam_live = QLabel(self)
+        self.label_foto_capturada = QLabel(self)
+        # self.foto_de_camara = QLabel(self)
+        self.input_nombre_foto = QLineEdit()
+        self.input_nombre_foto.setPlaceholderText("Introduzca el nombre de la foto")
+        self.input_nombre_foto.textChanged.connect(lambda text: print(f"El texto cambio {text}"))
+        self.input_nombre_foto.text()
+
+        content_widget = QWidget()
+        content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.addWidget(QLabel(self.label_foto_capturada))
+
+        scroll_area.setWidget(content_widget)
+        # self.layout.addWidget(self.label_foto_capturada)
+        self.layout.addWidget(self.cam_live, alignment=Qt.AlignCenter)
+        # self.layout.addWidget(self.foto_de_camara)
+        # scroll_area.setWidget(self.label_foto_capturada)
+        # self.layout.addWidget(self.frame_camera)
+        self.layout.addWidget(self.boton_abrir_camara)
+        self.layout.addWidget(self.boton_cerrar_camara)
+        self.layout.addWidget(self.boton_guardar_foto)
+        self.layout.addWidget(self.input_nombre_foto)
+
+        #La ocultamos ya que la mostrará y ocultara muchas veces
+        self.boton_cerrar_camara.hide()
+        self.boton_guardar_foto.hide()
+        self.input_nombre_foto.hide()
+
+        # self.pantalla = QGuiApplication.primaryScreen()
+        # self.medidas_pantalla = self.pantalla.size()
         self.timer_update = QTimer()
         self.timer_update.timeout.connect(self.update)
         self.timer_update.start(30)
@@ -52,6 +98,9 @@ class EscanerRostro(QtWidgets.QWidget):
         known_image = face_recognition.load_image_file("src/img/gabe.jpeg")
         self.known_encodings = face_recognition.face_encodings(known_image)[0]
 
+
+        # self.dialog = DialogExample()
+        # self.dialog.show()
         #Marca error de formato en este apartado#
         # if not self.known_encodings:
         #     print("No se encontró rostro en la imagen conocida.")
@@ -70,8 +119,16 @@ class EscanerRostro(QtWidgets.QWidget):
         
         # conectas la acción
         boton_abrir_camara.clicked.connect(self.abrirCamara)  # <-- Aquí el fix
+                                                            #no utilizar el parentesis '()' ya que activa la función
         return boton_abrir_camara
 
+    def botonGuardarFoto(self):
+        boton_guardar_foto = QPushButton("Capturar fotografía")
+        boton_guardar_foto.setStatusTip("Captura la foto actual en pantalla")
+        
+        boton_guardar_foto.clicked.connect(self.guardarFoto)
+        return boton_guardar_foto
+    
     def botonCerrarCamara(self):
         boton_cerrar_camara = QPushButton("Cerrar Cámara")
         boton_cerrar_camara.setStatusTip("Cierra la cámara de detección")
@@ -85,10 +142,12 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_abrir_camara.show()
         self.boton_cerrar_camara.hide()
         self.cam_live.hide()
+        self.boton_guardar_foto.hide()
 
     def abrirCamara(self):
         # self.layout.removeWidget(self.boton_abrir_camara)
         self.boton_abrir_camara.hide()
+        self.boton_guardar_foto.show()
         self.cam_live.show()
         # self.layout.addWidget(self.boton_cerrar_camara)
         self.boton_cerrar_camara.show()
@@ -180,18 +239,22 @@ class EscanerRostro(QtWidgets.QWidget):
                 
                 # Ahora usar face_recognition para obtener los encodings
                 face_locations = face_recognition.face_locations(rgb_frame)
-                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+                face_encodings = face_recognition.face_encodings(face_crop, face_locations)
+
+                self.encoding_foto_capturada = face_encodings
 
                 if face_encodings:
                     encoding = face_encodings[0]
-                    print("Encoding obtenido:", encoding)
-                    resultados = face_recognition.compare_faces(self.known_encodings, face_encodings)
-                    distancia = face_recognition.face_distance(self.known_encodings, face_encodings)[0]
+                    # print("Encoding obtenido:", encoding)
+                    resultados = face_recognition.compare_faces(self.known_encodings, encoding)
+                    distancia = face_recognition.face_distance(self.known_encodings, encoding)
                     print(f'Validación de comparación de datos biometricos', resultados)
 
                     if True in resultados:
+                        pass
                         print(f'Persona identificada como Gabe Newell')
                     else:
+                        pass
                         print(f'La persona no es Gabe Newell')
 
                 else:
@@ -218,9 +281,46 @@ class EscanerRostro(QtWidgets.QWidget):
 
 
     def capturarFoto(self):
-        if self.foto_de_camara is not None:
+        
+        if self.frame_camera is not None:
             rgb = cv2.cvtColor(self.frame_actual, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb.shape
             qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(qimg)
-            self.cam_live.setPixmap(pixmap)
+            self.label_foto_capturada.setPixmap(pixmap)
+
+    def guardarFoto(self):
+        self.cap.release()
+        # type(self.frame_camera)
+        if self.frame_camera is not None:
+            file_name = "captura.png"
+            # cv2.imwrite(file_name, self.frame_camera)
+
+            # print(f"Imagen guardada capturada")
+
+            rgb = cv2.cvtColor(self.frame_camera, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb.shape
+            qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(qimg)
+            self.label_foto_capturada.setPixmap(pixmap)
+            print('self.encoding_foto_capturada: ', self.encoding_foto_capturada)
+            self.modal = NombrarFotoCapturada(self, data=pixmap, 
+                                              imagen=self.frame_camera, 
+                                              encodigns=self.encoding_foto_capturada)
+            # self.modal.show()
+            self.resultado = self.modal.exec()
+
+            if self.resultado == QDialog.Accepted:
+                print("Aceptada")
+            elif self.resultado == QDialog.Rejected:
+                print("Rechazado")
+                
+            self.abrirCamara()
+            # self.modal.accept()
+
+        else:
+            print("Algo salio mal...")
+
+    
+
+    # def abrirModalFotoCapturada(self):

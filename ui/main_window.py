@@ -8,7 +8,9 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QAction, 
     QIcon,
-    QKeySequence)
+    QKeySequence,
+    QGuiApplication
+)
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -22,7 +24,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QStatusBar,
     QToolBar,
-    QWidgetAction
+    QWidgetAction,
+    QScrollArea
 )
 from PySide6.QtCore import Qt
 from database.db_manager import DBManager
@@ -66,6 +69,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack = QtWidgets.QStackedWidget()
         self.setCentralWidget(self.stack)
 
+
         # Agregar pantallas
         self.escaneoRostro = EscanerRostro()
         self.stack.addWidget(self.escaneoRostro)
@@ -73,6 +77,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.escaneoRostro)
         
+        # self.setMaximumHeight(self.medidas_pantalla.height()) 
+
         # self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
 
         # self.button = QtWidgets.QPushButton("Click me!")
