@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+import json
 
 class DBManager:
 
@@ -10,32 +11,62 @@ class DBManager:
         self.db_path = db_path
         self.cursor = self.conn.cursor()
 
+        self.crearTablaPersonas()
+        
     def getPersonasData(self):
         
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (" \
-        "id_persona INTEGER PRIMARY KEY AUTOINCREMENT, " \
-        "nombre_persona TEXT NOT NULL, " \
-        "imagen TEXT NOT NULL, " \
-        "encodes TEXT NOT NULL, " \
-        "created_at TEXT NOT NULL)")
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, created_at TEXT NOT NULL)")
+
+            # Ahora sí, seleccionamos datos
+        self.cursor.execute("SELECT * FROM personas")
 
         filas = self.cursor.fetchall()
 
-        self.conn.close()
+        self.conn.commit()
 
         return filas
     
+    def crearTablaPersonas(self):
+
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, created_at TEXT NOT NULL)")
+
+        self.conn.commit()
+        self.conn.close()
+    
+    def getPersonas(self):
+
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        print("creando tabla")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, created_at TEXT NOT NULL)")
+
+        self.cursor.execute("SELECT * FROM personas")
+        filas = self.cursor.fetchall()
+
+        self.conn.commit()
+        self.conn.close()
+
+        return filas
+
+
     def guardarPersonaData(self, nombre_persona, imagen, encodes):
 
         self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
 
         data = (nombre_persona, imagen, encodes, datetime.now().isoformat())
 
-        self.conn.execute("INSERT INTO personas (imagen, encodes, created_at) VALUES (?, ?, ?)", data)
+        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encodes, created_at) VALUES (?, ?, ?, ?)", data)
 
         self.conn.commit()
-
-        self.conn.close() 
+        self.conn.close()
     
     def getBalances(self):
 

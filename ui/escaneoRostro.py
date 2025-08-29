@@ -19,6 +19,7 @@ from PySide6.QtCore import (
 import mediapipe as mp
 import face_recognition
 import cv2
+import json
 from ui.dialogs.example import DialogExample
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
@@ -37,10 +38,12 @@ class EscanerRostro(QtWidgets.QWidget):
         self.layout.addWidget(scroll_area)
         # self.foto_capturada = None
         self.encoding_foto_capturada = None
+        self.encodings_db = list()
+        self.nombres_personas_db = list()
+        self.ids_personas_db = list()
 
         self.dbManager = DBManager()
-
-        self.getPersonas = self.dbManager.getPersonasData()
+        self.cargarDatosPersonas()
 
         # Add your content (e.g., many QLabels) to content_layout
         #ESTO AGREGA SOLO 20 Items para el apartado del scroll pero fue destacado por la ventana modal
@@ -98,13 +101,13 @@ class EscanerRostro(QtWidgets.QWidget):
         known_image = face_recognition.load_image_file("src/img/gabe.jpeg")
         self.known_encodings = face_recognition.face_encodings(known_image)[0]
 
+        # if not self.known_encodings:
+        #     print("No se encontró rostro en la imagen conocida.")
+        #     exit()
 
         # self.dialog = DialogExample()
         # self.dialog.show()
         #Marca error de formato en este apartado#
-        # if not self.known_encodings:
-        #     print("No se encontró rostro en la imagen conocida.")
-        #     exit()
 
 
     def update(self):
@@ -151,7 +154,8 @@ class EscanerRostro(QtWidgets.QWidget):
         self.cam_live.show()
         # self.layout.addWidget(self.boton_cerrar_camara)
         self.boton_cerrar_camara.show()
-        print("Camara")
+        # print("Camara")
+        self.cargarDatosPersonas()
 
         # Iniciar cámara
         self.cap = cv2.VideoCapture(0)
@@ -211,7 +215,7 @@ class EscanerRostro(QtWidgets.QWidget):
             for detection in results.detections:
 
                 # Dibujar la detección
-                self.mp_drawing.draw_detection(rgb_frame, detection)
+                # self.mp_drawing.draw_detection(rgb_frame, detection)
 
                 # Bounding box relativa
                 bbox = detection.location_data.relative_bounding_box
@@ -236,32 +240,86 @@ class EscanerRostro(QtWidgets.QWidget):
                 # Algunos modelos requieren al menos 1 canal, tamaño mínimo, etc.
                 if face_crop.size == 0:
                     continue
-                
-                # Ahora usar face_recognition para obtener los encodings
+
                 face_locations = face_recognition.face_locations(rgb_frame)
-                face_encodings = face_recognition.face_encodings(face_crop, face_locations)
+                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-                self.encoding_foto_capturada = face_encodings
+                for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
 
-                if face_encodings:
-                    encoding = face_encodings[0]
-                    # print("Encoding obtenido:", encoding)
-                    resultados = face_recognition.compare_faces(self.known_encodings, encoding)
-                    distancia = face_recognition.face_distance(self.known_encodings, encoding)
-                    print(f'Validación de comparación de datos biometricos', resultados)
+                    resultados = face_recognition.compare_faces(self.encodings_db, encoding)
+                    # resultados = []
+
+                    self.encoding_foto_capturada = encoding
 
                     if True in resultados:
-                        pass
-                        print(f'Persona identificada como Gabe Newell')
+                        index = resultados.index(True)
+                        nombre = self.nombres_personas_db[index]
+                        color = (0, 255, 0)
                     else:
-                        pass
-                        print(f'La persona no es Gabe Newell')
+                        nombre = "Desconocido"
+                        color = (0, 0, 255)
 
-                else:
-                    # No se pudo obtener el encoding con face_recognition
-                    print("No se detectó algun rostro")
+                    # Dibujar rectángulo + nombre
+                    cv2.rectangle(rgb_frame, (left, top), (right, bottom), color, 2)
+                    cv2.putText(rgb_frame, nombre, (left, top - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2, cv2.LINE_AA)
 
+                
+                # Ahora usar face_recognition para obtener los encodings
+                # face_locations = face_recognition.face_locations(rgb_frame)
+                # face_encodings = face_recognition.face_encodings(frame, face_locations)
+                # print('face_encodings: ', face_encodings)
 
+                # self.encoding_foto_capturada = face_encodings
+
+                # if face_encodings:
+
+                #     for encoding in face_encodings:
+                #         # print("Encoding obtenido:", encoding)
+                #         resultados = face_recognition.compare_faces(self.encodings_db, encoding)
+                #         # distancia = face_recognition.face_distance(self.known_encodings, encoding)
+                #         # print(f'Validación de comparación de datos biometricos', resultados)
+
+                #         if True in resultados:
+                            
+                #             index = resultados.index(True)
+                #             nombre = self.nombres_personas_db[index]
+
+                #             #Dibujar el nombre en la detección
+                #             cv2.putText(
+                #                 rgb_frame,
+                #                 nombre,
+                #                 (x, y - 10),  # posición (arriba del rectángulo)
+                #                 cv2.FONT_HERSHEY_SIMPLEX,
+                #                 0.9,  # tamaño de la fuente
+                #                 (0, 255, 0),  # color (verde)
+                #                 2,  # grosor
+                #                 cv2.LINE_AA
+                #             )
+
+                #             print(f'La persona es {nombre}')
+
+                #         else:
+                #                                     #Dibujar el nombre en la detección
+                #             cv2.putText(
+                #                 rgb_frame,
+                #                 "Desconocido",
+                #                 (x, y - 10),
+                #                 cv2.FONT_HERSHEY_SIMPLEX,
+                #                 0.9,
+                #                 (0, 0, 255),  # rojo
+                #                 2,
+                #                 cv2.LINE_AA
+                #             )
+
+                #             print(f'La persona no esta registrada')
+
+                # else:
+                #     # No se pudo obtener el encoding con face_recognition
+                #     print("No se detectó algun rostro")
+        else:
+            
+            pass
 
         # Convertir para mostrar en QLabel
         h, w, ch = rgb_frame.shape
@@ -321,6 +379,19 @@ class EscanerRostro(QtWidgets.QWidget):
         else:
             print("Algo salio mal...")
 
-    
+    def cargarDatosPersonas(self):
+
+        self.getPersonas = self.dbManager.getPersonas()
+
+        for persona in self.getPersonas:
+
+            self.encodings_db.append(json.loads(persona[3]))
+            self.nombres_personas_db.append(persona[1])
+            self.ids_personas_db.append(persona[0])
+
+            print(f"{json.loads(persona[3])}")
+
+        print('self.encodings_db: ', type(self.encodings_db))
+        print('self.getPersonas: ', self.getPersonas)
 
     # def abrirModalFotoCapturada(self):

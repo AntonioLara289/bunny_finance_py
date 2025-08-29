@@ -23,11 +23,10 @@ class NombrarFotoCapturada(QDialog):
         self.data = data
         self.imagen = imagen
         self.encodings = encodigns
+        
+        self.dbManager = DBManager()
 
         self.directorio_customizado = "src/img/personas"
-
-        self.dbManager = DBManager()
-        print('self.dbManager.getPersonasData(): ', self.dbManager.getPersonasData())
         
         # self.setWindowFlags(self.windowFlags() | Qt.WindowStayOnTopHint)
 
@@ -68,7 +67,6 @@ class NombrarFotoCapturada(QDialog):
 
         self.resize(self.data.size().width(), self.data.size().height() + 200)
         
-        print('data: ', data)
         self.checkData()
 
     # def deshabilitarBoton(self):
@@ -123,11 +121,14 @@ class NombrarFotoCapturada(QDialog):
             # os.path.join handles path concatenation correctly across different operating systems
             # Suponiendo que self.encodings = face_recognition.face_encodings(frame)
 
+            # print('self.encodings: ', self.encodings)
+
             print('self.encodings: ', self.encodings)
+            
             if len(self.encodings) == 0:
                 raise ValueError("No se detectó ninguna cara en la imagen")
 
-            encoding_array = self.encodings[0]        # Esto sí es NumPy array
+            encoding_array = self.encodings        # Esto sí es NumPy array
             encoding_list = encoding_array.tolist()   # Ahora sí puedes convertir a lista
             encoding_json = json.dumps(encoding_list)
 
@@ -138,6 +139,8 @@ class NombrarFotoCapturada(QDialog):
 
             # Save the image to the specified custom directory
             cv2.imwrite(output_path, self.imagen)
+
+            self.accept()
 
             print("Foto guardada")
 
