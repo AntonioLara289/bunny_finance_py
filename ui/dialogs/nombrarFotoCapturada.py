@@ -42,7 +42,7 @@ class NombrarFotoCapturada(QDialog):
         self.boton_cancelar_guardado = self.botonCancelarGuardado()
 
         self.nombre_imagen.setPlaceholderText("Introduzca el nombre de la foto")
-        # self.nombre_imagen.textChanged.connect(lambda text: print(f"El texto cambio {text}"))
+        # self.nombre_imagen.textChanged.connect(lambda text: #print(f"El texto cambio {text}"))
 
         # self.layout.addWidget(self.imagen)
         # self.layout.addWidget(self.boton_cancelar_guardado)
@@ -76,9 +76,9 @@ class NombrarFotoCapturada(QDialog):
 
         if self.data is not None:
             self.label_imagen.setPixmap(self.data)
-            print('true')
+            #print('true')
         else:
-            print('false')
+            #print('false')
             self.close()
 
     def botonGuardarFoto(self):
@@ -106,24 +106,24 @@ class NombrarFotoCapturada(QDialog):
 
         self.boton_guardar_foto.setEnabled(False)
 
-        print("Guardando foto")
+        #print("Guardando foto")
 
-        print('self.nombre_imagen.text(): ', self.nombre_imagen.text())
+        #print('self.nombre_imagen.text(): ', self.nombre_imagen.text())
         if self.nombre_imagen.text() != "":
 
             if not os.path.exists(self.directorio_customizado):
 
                 os.makedirs(self.directorio_customizado)
 
-                print(f"Directory '{self.directorio_customizado}' created.")
+                #print(f"Directory '{self.directorio_customizado}' created.")
 
             # Define the full path for saving the image
             # os.path.join handles path concatenation correctly across different operating systems
             # Suponiendo que self.encodings = face_recognition.face_encodings(frame)
 
-            # print('self.encodings: ', self.encodings)
+            # #print('self.encodings: ', self.encodings)
 
-            print('self.encodings: ', self.encodings)
+            #print('self.encodings: ', self.encodings)
             
             if len(self.encodings) == 0:
                 raise ValueError("No se detectó ninguna cara en la imagen")
@@ -135,17 +135,18 @@ class NombrarFotoCapturada(QDialog):
             self.dbManager.guardarPersonaData(self.nombre_imagen.text(), self.nombre_imagen.text() + '.png', encoding_json)
 
             output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
-            print('output_path: ', output_path)
+            #print('output_path: ', output_path)
 
             # Save the image to the specified custom directory
             cv2.imwrite(output_path, self.imagen)
 
             self.accept()
 
-            print("Foto guardada")
+            #print("Foto guardada")
 
         else:
-            print("No tiene nombre")
+            pass
+            #print("No tiene nombre")
 
         self.boton_guardar_foto.setEnabled(True)
         
