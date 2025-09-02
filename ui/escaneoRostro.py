@@ -34,13 +34,14 @@ class EscanerRostro(QtWidgets.QWidget):
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(QtWidgets.QLabel("Soy la pantalla de escaner"))
 
-        scroll_area = QScrollArea()
-        self.layout.addWidget(scroll_area)
+        # scroll_area = QScrollArea()
+        # self.layout.addWidget(scroll_area)
         # self.foto_capturada = None
         self.encoding_foto_capturada = None
         self.encodings_db = list()
         self.nombres_personas_db = list()
         self.ids_personas_db = list()
+        self.ids_personas_indetificadas = list()
 
         self.dbManager = DBManager()
         self.cargarDatosPersonas()
@@ -61,18 +62,18 @@ class EscanerRostro(QtWidgets.QWidget):
 
         self.frame_camera = QLabel(self)
         self.cam_live = QLabel(self)
-        self.label_foto_capturada = QLabel(self)
+        # self.label_foto_capturada = QLabel(self)
         # self.foto_de_camara = QLabel(self)
         self.input_nombre_foto = QLineEdit()
         self.input_nombre_foto.setPlaceholderText("Introduzca el nombre de la foto")
         self.input_nombre_foto.textChanged.connect(lambda text: print(f"El texto cambio {text}"))
         self.input_nombre_foto.text()
 
-        content_widget = QWidget()
-        content_layout = QtWidgets.QVBoxLayout(content_widget)
-        content_layout.addWidget(QLabel(self.label_foto_capturada))
+        # content_widget = QWidget()
+        # content_layout = QtWidgets.QVBoxLayout(content_widget)
+        # content_layout.addWidget(QLabel(self.label_foto_capturada))
 
-        scroll_area.setWidget(content_widget)
+        # scroll_area.setWidget(content_widget)
         # self.layout.addWidget(self.label_foto_capturada)
         self.layout.addWidget(self.cam_live, alignment=Qt.AlignCenter)
         # self.layout.addWidget(self.foto_de_camara)
@@ -246,8 +247,8 @@ class EscanerRostro(QtWidgets.QWidget):
 
                 for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
 
-                    resultados = face_recognition.compare_faces(self.encodings_db, encoding)
                     # resultados = []
+                    resultados = face_recognition.compare_faces(self.encodings_db, encoding)
 
                     self.encoding_foto_capturada = encoding
 
@@ -255,6 +256,14 @@ class EscanerRostro(QtWidgets.QWidget):
                         index = resultados.index(True)
                         nombre = self.nombres_personas_db[index]
                         color = (0, 255, 0)
+                        id = self.ids_personas_db[index]
+                        nombre += ", ID: " + str(id)
+                        self.boton_guardar_foto.setEnabled(False)
+                        if id in self.ids_personas_db:
+                            pass
+                        else:
+                            self.ids_personas_indetificadas.appen(self.ids_personas_db[index])
+
                     else:
                         nombre = "Desconocido"
                         color = (0, 0, 255)
@@ -345,7 +354,7 @@ class EscanerRostro(QtWidgets.QWidget):
             h, w, ch = rgb.shape
             qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(qimg)
-            self.label_foto_capturada.setPixmap(pixmap)
+            # self.label_foto_capturada.setPixmap(pixmap)
 
     def guardarFoto(self):
         self.cap.release()
@@ -360,7 +369,7 @@ class EscanerRostro(QtWidgets.QWidget):
             h, w, ch = rgb.shape
             qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(qimg)
-            self.label_foto_capturada.setPixmap(pixmap)
+            # self.label_foto_capturada.setPixmap(pixmap)
             print('self.encoding_foto_capturada: ', self.encoding_foto_capturada)
             self.modal = NombrarFotoCapturada(self, data=pixmap, 
                                               imagen=self.frame_camera, 
@@ -393,5 +402,9 @@ class EscanerRostro(QtWidgets.QWidget):
 
         print('self.encodings_db: ', type(self.encodings_db))
         print('self.getPersonas: ', self.getPersonas)
+
+    def onDestroy(self):
+        self.cap.release()
+        pass
 
     # def abrirModalFotoCapturada(self):

@@ -17,3 +17,8 @@ __pycache__/
 
 # Archivos de dependencia de MediaPipe y OpenCV
 opencv_cache/
+
+src/img/personas
+
+database/bunny_detect.db
+*.db

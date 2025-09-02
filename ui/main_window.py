@@ -70,12 +70,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.stack)
 
 
+        # self.pantallaEscaneoRostro = EscanerRostro()
+        self.pantallaMostrandose = EscanerRostro()
         # Agregar pantallas
-        self.escaneoRostro = EscanerRostro()
-        self.stack.addWidget(self.escaneoRostro)
+        self.stack.addWidget(self.pantallaMostrandose)
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.escaneoRostro)
+        self.stack.setCurrentWidget(self.pantallaMostrandose)
         
         # self.setMaximumHeight(self.medidas_pantalla.height()) 
 
@@ -147,6 +148,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.text.setText(f"Cálculo: {valor}")
 
     def mostrarVistaHistorial(self):
+
+        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+        self.pantallaMostrandose.destroy()
+        
         print("Mostrando la vista de historial")
         # Agregar pantallas
         self.historial = Historial()
