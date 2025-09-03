@@ -66,7 +66,7 @@ class CameraWidget(QWidget):
             for detection in results.detections:
 
                 # Dibujar la detección
-                # self.mp_drawing.draw_detection(rgb_frame, detection)
+                self.mp_drawing.draw_detection(rgb_frame, detection)
 
                 # Bounding box relativa
                 bbox = detection.location_data.relative_bounding_box
