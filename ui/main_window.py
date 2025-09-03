@@ -72,6 +72,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # self.pantallaEscaneoRostro = EscanerRostro()
         self.pantallaMostrandose = EscanerRostro()
+
+        # ******************************************************************************************************
+        #Se tiene que conectar con la función onDestroy, desde ahora, todas las clases adicionales (pantallas)
+        # deben tener la función onDestroy (aunque no tenga nada por realizar al cerrarse).
+        
+        # Verificar el objeto EscanerRostro para un ejemplo claro
+        # ******************************************************************************************************
+        self.pantallaMostrandose.destroyed.connect(self.pantallaMostrandose.onDestroy)
         # Agregar pantallas
         self.stack.addWidget(self.pantallaMostrandose)
 
@@ -150,25 +158,27 @@ class MainWindow(QtWidgets.QMainWindow):
     def mostrarVistaHistorial(self):
 
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        self.pantallaMostrandose.destroy()
-        
+        self.destroyActual
         print("Mostrando la vista de historial")
         # Agregar pantallas
-        self.historial = Historial()
-        self.stack.addWidget(self.historial)
+        self.pantallaMostrandose = Historial()
+        self.stack.addWidget(self.pantallaMostrandose)
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.historial)
+        self.stack.setCurrentWidget(self.pantallaMostrandose)
 
 
     def mostrarVistaEscaneo(self):
+
+        self.destroyActual()
+
         print("Mostrando la vista de escaneo")
         # Agregar pantallas
-        self.escaneoRostro = EscanerRostro()
-        self.stack.addWidget(self.escaneoRostro)
+        self.pantallaMostrandose = EscanerRostro()
+        self.stack.addWidget(self.pantallaMostrandose)
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.escaneoRostro)
+        self.stack.setCurrentWidget(self.pantallaMostrandose)
 
     def inicializarBotonEscaneo(window, file_menu):
         button_escaneo_rostro = QAction("Escaneo De Rostro", window)
@@ -194,3 +204,11 @@ class MainWindow(QtWidgets.QMainWindow):
         return button_historial_registro
 
 
+    def destroyActual(self):
+
+        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+        
+        self.pantallaMostrandose.close()
+        self.stack.removeWidget(self.pantallaMostrandose)
+        self.pantallaMostrandose.deleteLater()
+        self.pantallaMostrandose = None

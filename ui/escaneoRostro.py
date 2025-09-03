@@ -95,9 +95,9 @@ class EscanerRostro(QtWidgets.QWidget):
         self.timer_update.timeout.connect(self.update)
         self.timer_update.start(30)
         
-        self.mp_face_detection = mp.solutions.face_detection
+        # self.mp_face_detection = mp.solutions.face_detection
         self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5)
-        self.mp_drawing = mp.solutions.drawing_utils
+        # self.mp_drawing = mp.solutions.drawing_utils
 
         known_image = face_recognition.load_image_file("src/img/gabe.jpeg")
         self.known_encodings = face_recognition.face_encodings(known_image)[0]
@@ -242,9 +242,11 @@ class EscanerRostro(QtWidgets.QWidget):
                 if face_crop.size == 0:
                     continue
 
+                
                 face_locations = face_recognition.face_locations(rgb_frame)
                 face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
+                # Código pendiente por comprender, esto salvo la detección multiple con identificación
                 for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
 
                     # resultados = []
@@ -253,12 +255,19 @@ class EscanerRostro(QtWidgets.QWidget):
                     self.encoding_foto_capturada = encoding
 
                     if True in resultados:
+
                         index = resultados.index(True)
+
                         nombre = self.nombres_personas_db[index]
+
                         color = (0, 255, 0)
+
                         id = self.ids_personas_db[index]
+
                         nombre += ", ID: " + str(id)
+
                         self.boton_guardar_foto.setEnabled(False)
+
                         if id in self.ids_personas_db:
                             pass
                         else:
@@ -394,8 +403,14 @@ class EscanerRostro(QtWidgets.QWidget):
 
         for persona in self.getPersonas:
 
+            # En Python, no se utiliza el nombre del atributo del array/objeto al que quieres acceder, sino que se 
+            # utilizan los numeros.
+            
+            # Encodings
             self.encodings_db.append(json.loads(persona[3]))
+            # Nombres
             self.nombres_personas_db.append(persona[1])
+            # Ids
             self.ids_personas_db.append(persona[0])
 
             print(f"{json.loads(persona[3])}")
@@ -403,8 +418,11 @@ class EscanerRostro(QtWidgets.QWidget):
         print('self.encodings_db: ', type(self.encodings_db))
         print('self.getPersonas: ', self.getPersonas)
 
-    def onDestroy(self):
-        self.cap.release()
-        pass
-
+    def onDestroy(self, event):
+        print("Cerrando escaneo de rostro")
+        # Esto sirve para al momento de cambiar la pantalla desde el menú, debemos liberar la cámara y que no 
+        # sigan los procesos que no son terminados al cambiar de pantalla y que afectan al sistema
+        if self.cap.isOpened():
+            self.cap.release()
+        event.accept()
     # def abrirModalFotoCapturada(self):
