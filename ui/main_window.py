@@ -8,7 +8,9 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QAction, 
     QIcon,
-    QKeySequence)
+    QKeySequence,
+    QGuiApplication
+)
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -22,7 +24,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QStatusBar,
     QToolBar,
-    QWidgetAction
+    QWidgetAction,
+    QScrollArea
 )
 from PySide6.QtCore import Qt
 from database.db_manager import DBManager
@@ -44,8 +47,8 @@ try:
     # print("MediaPipe versión:", mp.__version__)
     
     # Prueba mínima de funcionalidad
-    mp_face_detection = mp.solutions.face_detection
-    face_detector = mp_face_detection.FaceDetection()
+    # mp_face_detection = mp.solutions.face_detection
+    # face_detector = mp_face_detection.FaceDetection()
     print("MediaPipe FaceDetection inicializado correctamente")
 
 except ImportError as e:
@@ -66,13 +69,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack = QtWidgets.QStackedWidget()
         self.setCentralWidget(self.stack)
 
+
+        # self.pantallaEscaneoRostro = EscanerRostro()
+        self.pantallaMostrandose = EscanerRostro()
         # Agregar pantallas
-        self.escaneoRostro = EscanerRostro()
-        self.stack.addWidget(self.escaneoRostro)
+        self.stack.addWidget(self.pantallaMostrandose)
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.escaneoRostro)
+        self.stack.setCurrentWidget(self.pantallaMostrandose)
         
+        # self.setMaximumHeight(self.medidas_pantalla.height()) 
+
         # self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
 
         # self.button = QtWidgets.QPushButton("Click me!")
@@ -141,6 +148,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.text.setText(f"Cálculo: {valor}")
 
     def mostrarVistaHistorial(self):
+
+        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+        self.pantallaMostrandose.destroy()
+        
         print("Mostrando la vista de historial")
         # Agregar pantallas
         self.historial = Historial()
