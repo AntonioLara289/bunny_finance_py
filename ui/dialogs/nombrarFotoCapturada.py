@@ -15,7 +15,7 @@ import json
 class NombrarFotoCapturada(QDialog):
 
     def __init__(self, parent = None, data = None, imagen = None, encodigns = None):
-
+##
         super(NombrarFotoCapturada, self).__init__(parent)
 
         self.setWindowTitle("Nombre la foto capturada")

@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from database.db_manager import DBManager
+from ui.consultas import Consultas
 from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
@@ -69,37 +70,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack = QtWidgets.QStackedWidget()
         self.setCentralWidget(self.stack)
 
-
         # self.pantallaEscaneoRostro = EscanerRostro()
         self.pantallaMostrandose = EscanerRostro()
         # Agregar pantallas
         self.stack.addWidget(self.pantallaMostrandose)
-
         # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.pantallaMostrandose)
-        
-        # self.setMaximumHeight(self.medidas_pantalla.height()) 
-
-        # self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
-
-        # self.button = QtWidgets.QPushButton("Click me!")
-        # self.text = QtWidgets.QLabel("Hello World", alignment=QtCore.Qt.AlignCenter)
-        # self.modal_button = QtWidgets.QPushButton("Iniciar Escaneo")
-        # self.camera_switch = QtWidgets.QPushButton("Iniciar Escaneo")
-
-        # self.layout = QtWidgets.QVBoxLayout(self)
-        # # self.layout.addWidget(self.slider)
-        # self.layout.addWidget(self.text)
-        # self.layout.addWidget(self.button)
-        # self.layout.addWidget(self.modal_button)
-        # # self.layout.addWidget(self.switchCamera)
-
-        # self.button.clicked.connect(self.magic)
-        # self.modal_button.clicked.connect(self.mostrar_camara)
-        # self.modal_button.clicked.connect(self.show_modal)
-        # self.calculo()
-        
-        # self.switchCamera.clicked.connect(CameraWidget.switchCamera())
 
     def toolbar_button_clicked(self, s):
         print("click", s)
@@ -119,9 +95,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # modal.exec()
 
     @QtCore.Slot()
-
-    def magic(self):
-        self.text.setText(random.choice(self.hello))
 
     def mostrar_camara(self):
         self.cam_window = CameraWidget(self)
@@ -160,6 +133,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.historial)
 
+    def mostrarVistaConsultas(self):
+
+        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+        self.pantallaMostrandose.destroy()
+        
+        print("Mostrando vista Consultas")
+        # Agregar pantallas
+        self.consultas = Consultas()
+        self.stack.addWidget(self.consultas)
+
+        # Mostrar esa pantalla
+        self.stack.setCurrentWidget(self.consultas)
 
     def mostrarVistaEscaneo(self):
         print("Mostrando la vista de escaneo")
@@ -169,6 +154,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.escaneoRostro)
+
+    def salir(self):
+        self.pantallaMostrandose.destroy()
+        QtWidgets.QApplication.quit()
 
     def inicializarBotonEscaneo(window, file_menu):
         button_escaneo_rostro = QAction("Escaneo De Rostro", window)
@@ -181,7 +170,6 @@ class MainWindow(QtWidgets.QMainWindow):
         button_escaneo_rostro.triggered.connect(lambda: window.mostrarVistaEscaneo())
         return button_escaneo_rostro
 
-
     def inicializarBotonRegistro(window, file_menu):
         button_historial_registro = QAction("Historial de registro", window)
         button_historial_registro.setStatusTip("Historial de las detecciones")
@@ -193,4 +181,24 @@ class MainWindow(QtWidgets.QMainWindow):
         button_historial_registro.triggered.connect(lambda: window.mostrarVistaHistorial())
         return button_historial_registro
 
+    def inicializarBotonConsultas(window, file_menu):
+        button_consulta_personas = QAction("Consulta de registro de personas", window)
+        button_consulta_personas.setStatusTip("Consulta del registro de personas")
+        
+        # lo agregas al menú o toolbar
+        file_menu.addAction(button_consulta_personas)
 
+        # conectas la acción
+        button_consulta_personas.triggered.connect(lambda: window.mostrarVistaConsultas())
+        return button_consulta_personas
+
+    def inicializarSalir(window, file_menu):
+        button_salir = QAction("Salir", window)
+        button_salir.setStatusTip("Salir de aplicacion")
+        
+        # lo agregas al menú o toolbar
+        file_menu.addAction(button_salir)
+
+        # conectas la acción
+        button_salir.triggered.connect(lambda: window.salir())
+        return button_salir

@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
 )
 
 if __name__ == "__main__":
-
     app = QApplication(sys.argv)
 
     window = MainWindow()
@@ -45,8 +44,14 @@ if __name__ == "__main__":
     ##Acciones de los botones
     button_action.triggered.connect(window.toolbar_button_clicked)
 
-    buton_escaneo_rostro = window.inicializarBotonEscaneo(file_menu)
-    buton_historial_registro = window.inicializarBotonRegistro(file_menu)
+    #buton_escaneo_rostro = window.inicializarBotonEscaneo(file_menu)
+    #buton_historial_registro = window.inicializarBotonRegistro(file_menu)
+    #buton_consultas_asistencia = window.inicializarBotonConsultas(file_menu)
+    #buton_exit = window.salir(file_menu)
+    window.inicializarBotonEscaneo(file_menu)
+    window.inicializarBotonRegistro(file_menu)
+    window.inicializarBotonConsultas(file_menu)
+    window.inicializarSalir(file_menu)
 
     window.resize(800, 600)
     window.showMaximized()
@@ -54,4 +59,3 @@ if __name__ == "__main__":
     # print("main.")
 
     sys.exit(app.exec())
-
