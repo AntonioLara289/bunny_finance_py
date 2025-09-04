@@ -160,7 +160,8 @@ class MainWindow(QtWidgets.QMainWindow):
         QtWidgets.QApplication.quit()
 
     def inicializarBotonEscaneo(window, file_menu):
-        button_escaneo_rostro = QAction("Escaneo De Rostro", window)
+        file_menu.addSeparator()
+        button_escaneo_rostro = QAction("Escaneo de rostro", window)
         button_escaneo_rostro.setStatusTip("Escaneo de rostro con cámara")
         
         # lo agregas al menú o toolbar
@@ -182,8 +183,8 @@ class MainWindow(QtWidgets.QMainWindow):
         return button_historial_registro
 
     def inicializarBotonConsultas(window, file_menu):
-        button_consulta_personas = QAction("Consulta de registro de personas", window)
-        button_consulta_personas.setStatusTip("Consulta del registro de personas")
+        button_consulta_personas = QAction("Consulta asistencias", window)
+        button_consulta_personas.setStatusTip("Consulta del registro de personas y asistencias")
         
         # lo agregas al menú o toolbar
         file_menu.addAction(button_consulta_personas)
@@ -193,6 +194,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return button_consulta_personas
 
     def inicializarSalir(window, file_menu):
+        file_menu.addSeparator()
         button_salir = QAction("Salir", window)
         button_salir.setStatusTip("Salir de aplicacion")
         

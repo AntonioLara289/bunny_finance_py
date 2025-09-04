@@ -1,0 +1,46 @@
+/* General font */
+QWidget {
+    font-family: "Segoe UI";
+    font-size: 12px;
+    background-color: #171717;  /* Window background */
+    color: #EDEDED;             /* Text color */
+    background-image: url("src/img/background.png");
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #444444;
+    border: 3px solid #FFFFFF;
+    border-radius: 4px;
+    padding: 6px 12px;
+}
+
+QPushButton:hover {
+    background-color: #FFFFF;
+}
+
+QPushButton:pressed {
+    background-color: #FFFFF;
+}
+
+/* Tables */
+QTableWidget {
+    gridline-color: #666;
+    selection-background-color: #444444;
+    alternate-background-color: #3b3b3b;
+}
+
+QHeaderView::section {
+    background-color: #444444;
+    padding: 4px;
+    border: 1px solid #666;
+    font-weight: bold;
+}
+
+/*
+Colors Darker -> Brighter
+    #171717 BLACK
+    #444444 GRAY
+    #DA0037 RED
+    #EDEDED WHITE
+*/

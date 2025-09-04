@@ -10,8 +10,22 @@ class DBManager:
         self.conn = sqlite3.connect(db_path)
         self.db_path = db_path
         self.cursor = self.conn.cursor()
-
+        self.cursor.execute("PRAGMA table_info(table_name)")
         self.crearTablaPersonas()
+
+    def getColumns(self):
+        collums = 0
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        return collums
+    def getRows(self):
+        rows = 0
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+        rows = self.cursor.execute("SELECT COUNT(*) FROM personas")
+        rows = self.cursor.fetchone()[0]
+        return rows
         
     def getPersonasData(self):
         
