@@ -3,6 +3,7 @@
 .venv/
 venv/
 mi_entorno/
+dlib/
 
 # Archivos de Python compilados
 __pycache__/

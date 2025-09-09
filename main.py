@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidgetAction
 
 )
+import dlib
 
 # Style loader
 def load_stylesheet(app, filename):
@@ -27,15 +28,9 @@ def load_stylesheet(app, filename):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     load_stylesheet(app, "styles/style.qss")
 
     window = MainWindow()
-    
-    #Este es el antiguio toolbar
-    # toolbar = QToolBar("My main toolbar")
-    # window.addToolBar(toolbar)
-    # window.setCentralWidget(window.stack)
 
     button_action = QAction("Your button", window)
     button_action.setStatusTip("This is your button")
@@ -50,10 +45,10 @@ if __name__ == "__main__":
     ##Acciones de los botones
     button_action.triggered.connect(window.toolbar_button_clicked)
 
-    window.inicializarBotonEscaneo(file_menu)
-    window.inicializarBotonRegistro(file_menu)
-    window.inicializarBotonConsultas(file_menu)
-    window.inicializarSalir(file_menu)
+    window.BotonEscaneo(file_menu)
+    window.BotonRegistro(file_menu)
+    window.BotonConsultas(file_menu)
+    window.BotonSalir(file_menu)
 
     about_menu = menu.addMenu("Acerca")
 

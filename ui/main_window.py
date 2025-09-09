@@ -42,14 +42,6 @@ try:
     print("OpenCV importado correctamente")
     print("face_recognition importado correctamente")
     print("MediaPipe importado correctamente")
-
-    # Probar versiones (opcional)
-    # print("OpenCV versión:", cv2.__version__)
-    # print("MediaPipe versión:", mp.__version__)
-    
-    # Prueba mínima de funcionalidad
-    # mp_face_detection = mp.solutions.face_detection
-    # face_detector = mp_face_detection.FaceDetection()
     print("MediaPipe FaceDetection inicializado correctamente")
 
 except ImportError as e:
@@ -121,7 +113,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.text.setText(f"Cálculo: {valor}")
 
     def mostrarVistaHistorial(self):
-
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
         self.pantallaMostrandose.destroy()
         
@@ -134,7 +125,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack.setCurrentWidget(self.historial)
 
     def mostrarVistaConsultas(self):
-
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
         self.pantallaMostrandose.destroy()
         
@@ -159,7 +149,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pantallaMostrandose.destroy()
         QtWidgets.QApplication.quit()
 
-    def inicializarBotonEscaneo(window, file_menu):
+    # Botones para interfaz
+    def BotonEscaneo(window, file_menu):
         file_menu.addSeparator()
         button_escaneo_rostro = QAction("Escaneo de rostro", window)
         button_escaneo_rostro.setStatusTip("Escaneo de rostro con cámara")
@@ -171,7 +162,7 @@ class MainWindow(QtWidgets.QMainWindow):
         button_escaneo_rostro.triggered.connect(lambda: window.mostrarVistaEscaneo())
         return button_escaneo_rostro
 
-    def inicializarBotonRegistro(window, file_menu):
+    def BotonRegistro(window, file_menu):
         button_historial_registro = QAction("Historial de registro", window)
         button_historial_registro.setStatusTip("Historial de las detecciones")
         
@@ -182,7 +173,7 @@ class MainWindow(QtWidgets.QMainWindow):
         button_historial_registro.triggered.connect(lambda: window.mostrarVistaHistorial())
         return button_historial_registro
 
-    def inicializarBotonConsultas(window, file_menu):
+    def BotonConsultas(window, file_menu):
         button_consulta_personas = QAction("Consulta asistencias", window)
         button_consulta_personas.setStatusTip("Consulta del registro de personas y asistencias")
         
@@ -193,7 +184,7 @@ class MainWindow(QtWidgets.QMainWindow):
         button_consulta_personas.triggered.connect(lambda: window.mostrarVistaConsultas())
         return button_consulta_personas
 
-    def inicializarSalir(window, file_menu):
+    def BotonSalir(window, file_menu):
         file_menu.addSeparator()
         button_salir = QAction("Salir", window)
         button_salir.setStatusTip("Salir de aplicacion")
