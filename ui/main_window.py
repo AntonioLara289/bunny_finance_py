@@ -1,41 +1,41 @@
 import sys
 import random
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtCore import (
-    QSize, 
-    Qt
-)
+# from PySide6.QtCore import (
+#     QSize, 
+#     Qt
+# )
 from PySide6.QtGui import (
     QAction, 
-    QIcon,
-    QKeySequence,
-    QGuiApplication
+    # QIcon,
+    # QKeySequence,
+    # QGuiApplication
 )
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QLabel,
-    QMainWindow,
-    QStatusBar,
-    QToolBar,
-    QApplication,
-    QCheckBox,
-    QLabel,
-    QMainWindow,
-    QStatusBar,
-    QToolBar,
-    QWidgetAction,
-    QScrollArea
-)
-from PySide6.QtCore import Qt
-from database.db_manager import DBManager
+# from PySide6.QtWidgets import (
+#     QApplication,
+#     QCheckBox,
+#     QLabel,
+#     QMainWindow,
+#     QStatusBar,
+#     QToolBar,
+#     QApplication,
+#     QCheckBox,
+#     QLabel,
+#     QMainWindow,
+#     QStatusBar,
+#     QToolBar,
+#     QWidgetAction,
+#     QScrollArea
+# )
+# from PySide6.QtCore import Qt
+# from database.db_manager import DBManager
 from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
 from ui.Historial import Historial
 try:
-    import cv2
-    import face_recognition
+    # import cv2
+    # import face_recognition
     import mediapipe as mp
 
     print("OpenCV importado correctamente")
@@ -80,6 +80,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Verificar el objeto EscanerRostro para un ejemplo claro
         # ******************************************************************************************************
         self.pantallaMostrandose.destroyed.connect(self.pantallaMostrandose.onDestroy)
+
         # Agregar pantallas
         self.stack.addWidget(self.pantallaMostrandose)
 
@@ -158,7 +159,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def mostrarVistaHistorial(self):
 
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        self.destroyActual
+        self.destroyActual()
+
         print("Mostrando la vista de historial")
         # Agregar pantallas
         self.pantallaMostrandose = Historial()
@@ -175,6 +177,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print("Mostrando la vista de escaneo")
         # Agregar pantallas
         self.pantallaMostrandose = EscanerRostro()
+        
         self.stack.addWidget(self.pantallaMostrandose)
 
         # Mostrar esa pantalla
@@ -209,6 +212,6 @@ class MainWindow(QtWidgets.QMainWindow):
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
         
         self.pantallaMostrandose.close()
-        self.stack.removeWidget(self.pantallaMostrandose)
+        # self.stack.removeWidget(self.pantallaMostrandose)
         self.pantallaMostrandose.deleteLater()
         self.pantallaMostrandose = None

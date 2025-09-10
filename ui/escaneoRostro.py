@@ -1,4 +1,5 @@
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtWidgets
+# , QtCore, QtGui
 from PySide6.QtWidgets import (
     QPushButton,
     QLabel,
@@ -20,7 +21,7 @@ import mediapipe as mp
 import face_recognition
 import cv2
 import json
-from ui.dialogs.example import DialogExample
+# from ui.dialogs.example import DialogExample
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
 
@@ -95,7 +96,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.timer_update.timeout.connect(self.update)
         self.timer_update.start(30)
         
-        # self.mp_face_detection = mp.solutions.face_detection
+        self.mp_face_detection = mp.solutions.face_detection
         self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5)
         # self.mp_drawing = mp.solutions.drawing_utils
 
@@ -276,6 +277,7 @@ class EscanerRostro(QtWidgets.QWidget):
                     else:
                         nombre = "Desconocido"
                         color = (0, 0, 255)
+                        self.boton_guardar_foto.setEnabled(True)
 
                     # Dibujar rectángulo + nombre
                     cv2.rectangle(rgb_frame, (left, top), (right, bottom), color, 2)
