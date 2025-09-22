@@ -24,6 +24,7 @@ import json
 # from ui.dialogs.example import DialogExample
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
+import time
 
 class EscanerRostro(QtWidgets.QWidget):
     
@@ -97,7 +98,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.timer_update.start(30)
         
         self.mp_face_detection = mp.solutions.face_detection
-        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5)
+        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=1.0)
         # self.mp_drawing = mp.solutions.drawing_utils
 
         known_image = face_recognition.load_image_file("src/img/gabe.jpeg")
@@ -160,7 +161,23 @@ class EscanerRostro(QtWidgets.QWidget):
         self.cargarDatosPersonas()
 
         # Iniciar cámara
-        self.cap = cv2.VideoCapture(0)
+        index = 0
+        arr = []
+
+        while index < 5:
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                arr.append(index)
+                
+            else:
+                pass
+
+            cap.release()
+            index += 1    
+            
+
+        self.cap = cv2.VideoCapture(4)
+        print('Lista de camaras: ', arr)
 
         # Timer que lee frames cada 30 ms
         self.timer = QTimer()
