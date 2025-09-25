@@ -34,7 +34,13 @@ class DBManager:
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, estatus INTEGER NOT NULL, created_at TEXT NOT NULL)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (" \
+        "id_persona INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "nombre_persona TEXT NOT NULL, " \
+        "imagen TEXT NOT NULL, " \
+        "encodes TEXT NOT NULL, " \
+        "estatus INTEGER NOT NULL, " \
+        "created_at TEXT NOT NULL)")
 
         self.conn.commit()
         self.conn.close()
@@ -45,7 +51,13 @@ class DBManager:
         self.cursor = self.conn.cursor()
 
         # print("creando tabla")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, estatus INTEGER NOT NULL, created_at TEXT NOT NULL)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (" \
+        "id_persona INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "nombre_persona TEXT NOT NULL, " \
+        "imagen TEXT NOT NULL, " \
+        "encodes TEXT NOT NULL, " \
+        "estatus INTEGER NOT NULL, " \
+        "created_at TEXT NOT NULL)")
 
         self.cursor.execute("SELECT * FROM personas")
         filas = self.cursor.fetchall()
