@@ -1,42 +1,42 @@
 import sys
 import random
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtCore import (
-    QSize, 
-    Qt
-)
+# from PySide6.QtCore import (
+#     QSize, 
+#     Qt
+# )
 from PySide6.QtGui import (
     QAction, 
-    QIcon,
-    QKeySequence,
-    QGuiApplication
+    # QIcon,
+    # QKeySequence,
+    # QGuiApplication
 )
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QLabel,
-    QMainWindow,
-    QStatusBar,
-    QToolBar,
-    QApplication,
-    QCheckBox,
-    QLabel,
-    QMainWindow,
-    QStatusBar,
-    QToolBar,
-    QWidgetAction,
-    QScrollArea
-)
-from PySide6.QtCore import Qt
-from database.db_manager import DBManager
+# from PySide6.QtWidgets import (
+#     QApplication,
+#     QCheckBox,
+#     QLabel,
+#     QMainWindow,
+#     QStatusBar,
+#     QToolBar,
+#     QApplication,
+#     QCheckBox,
+#     QLabel,
+#     QMainWindow,
+#     QStatusBar,
+#     QToolBar,
+#     QWidgetAction,
+#     QScrollArea
+# )
+# from PySide6.QtCore import Qt
+# from database.db_manager import DBManager
 from ui.consultas import Consultas
 from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
 from ui.Historial import Historial
 try:
-    import cv2
-    import face_recognition
+    # import cv2
+    # import face_recognition
     import mediapipe as mp
 
     print("OpenCV importado correctamente")
@@ -64,6 +64,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # self.pantallaEscaneoRostro = EscanerRostro()
         self.pantallaMostrandose = EscanerRostro()
+
+        # ******************************************************************************************************
+        #Se tiene que conectar con la función onDestroy, desde ahora, todas las clases adicionales (pantallas)
+        # deben tener la función onDestroy (aunque no tenga nada por realizar al cerrarse).
+        
+        # Verificar el objeto EscanerRostro para un ejemplo claro
+        # ******************************************************************************************************
+        self.pantallaMostrandose.destroyed.connect(self.pantallaMostrandose.onDestroy)
+
         # Agregar pantallas
         self.stack.addWidget(self.pantallaMostrandose)
         # Mostrar esa pantalla
@@ -113,37 +122,56 @@ class MainWindow(QtWidgets.QMainWindow):
         self.text.setText(f"Cálculo: {valor}")
 
     def mostrarVistaHistorial(self):
+
+
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        self.pantallaMostrandose.destroy()
-        
+        self.destroyActual()
+
         print("Mostrando la vista de historial")
         # Agregar pantallas
-        self.historial = Historial()
-        self.stack.addWidget(self.historial)
+        self.pantallaMostrandose = Historial()
+        self.stack.addWidget(self.pantallaMostrandose)
+
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.historial)
-
+        self.stack.setCurrentWidget(self.pantallaMostrandose)
+        
     def mostrarVistaConsultas(self):
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        self.pantallaMostrandose.destroy()
+        self.destroyActual()
         
         print("Mostrando vista Consultas")
         # Agregar pantallas
-        self.consultas = Consultas()
-        self.stack.addWidget(self.consultas)
+        self.pantallaMostrandose = Consultas()
+        self.stack.addWidget(self.pantallaMostrandose)
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.consultas)
+        self.stack.setCurrentWidget(self.pantallaMostrandose)
 
+    def mostrarVistaConsultas(self):
+            #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+            self.pantallaMostrandose.destroy()
+            
+            print("Mostrando vista Consultas")
+            # Agregar pantallas
+            self.consultas = Consultas()
+            self.stack.addWidget(self.consultas)
+
+            # Mostrar esa pantalla
+            self.stack.setCurrentWidget(self.consultas)
+            
     def mostrarVistaEscaneo(self):
+
+        self.destroyActual()
+
         print("Mostrando la vista de escaneo")
         # Agregar pantallas
-        self.escaneoRostro = EscanerRostro()
-        self.stack.addWidget(self.escaneoRostro)
+        self.pantallaMostrandose = EscanerRostro()
+        
+        self.stack.addWidget(self.pantallaMostrandose)
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.escaneoRostro)
+        self.stack.setCurrentWidget(self.pantallaMostrandose)
 
     def salir(self):
         self.pantallaMostrandose.destroy()
@@ -172,6 +200,15 @@ class MainWindow(QtWidgets.QMainWindow):
         # conectas la acción
         button_historial_registro.triggered.connect(lambda: window.mostrarVistaHistorial())
         return button_historial_registro
+    
+    def destroyActual(self):
+
+        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+        
+        self.pantallaMostrandose.close()
+        # self.stack.removeWidget(self.pantallaMostrandose)
+        self.pantallaMostrandose.deleteLater()
+        self.pantallaMostrandose = None
 
     def BotonConsultas(window, file_menu):
         button_consulta_personas = QAction("Consulta asistencias", window)

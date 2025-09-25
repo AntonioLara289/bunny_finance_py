@@ -1,6 +1,5 @@
 import sqlite3
 from datetime import datetime
-import json
 
 class DBManager:
 
@@ -26,6 +25,7 @@ class DBManager:
         rows = self.cursor.execute("SELECT COUNT(*) FROM personas")
         rows = self.cursor.fetchone()[0]
         return rows
+        self.crearTablaHistorial()
         
     def getPersonasData(self):
         
@@ -48,7 +48,13 @@ class DBManager:
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, created_at TEXT NOT NULL)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (" \
+        "id_persona INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "nombre_persona TEXT NOT NULL, " \
+        "imagen TEXT NOT NULL, " \
+        "encodes TEXT NOT NULL, " \
+        "estatus INTEGER NOT NULL, " \
+        "created_at TEXT NOT NULL)")
 
         self.conn.commit()
         self.conn.close()
@@ -58,8 +64,14 @@ class DBManager:
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        print("creando tabla")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, created_at TEXT NOT NULL)")
+        # print("creando tabla")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (" \
+        "id_persona INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "nombre_persona TEXT NOT NULL, " \
+        "imagen TEXT NOT NULL, " \
+        "encodes TEXT NOT NULL, " \
+        "estatus INTEGER NOT NULL, " \
+        "created_at TEXT NOT NULL)")
 
         self.cursor.execute("SELECT * FROM personas")
         filas = self.cursor.fetchall()
@@ -69,6 +81,27 @@ class DBManager:
 
         return filas
 
+    def crearTablaHistorial(self):
+
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS historial_detecciones (id_deteccion INTEGER PRIMARY KEY AUTOINCREMENT, key_persona INTEGER NOT NULL, fecha TEXT NOT NULL)")
+
+        self.conn.commit()
+        self.conn.close()
+
+    def guardarHistorial(self, key_persona):
+
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        data = {key_persona, datetime.now().isoformat()}
+        
+        self.cursor.execute("INSERT INTO historial_detecciones (key_persona, fecha) VALUES (?, ?)", data)
+
+        self.conn.commit()
+        self.conn.close()
 
     def guardarPersonaData(self, nombre_persona, imagen, encodes):
 
@@ -110,3 +143,6 @@ class DBManager:
         else:
             print("No hay datos.")
             return []
+        
+    def dbConection(self):
+        return sqlite3.connect(self.db_path)
