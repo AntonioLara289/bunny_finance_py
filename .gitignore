@@ -1,4 +1,5 @@
 # .gitignore
+
 # Entorno virtual
 .venv/
 venv/
@@ -23,6 +24,5 @@ opencv_cache/
 src/img/personas
 
 database/bunny_detect.db
-*.db
 *.pyc
-ui/__pycache__/main_window.cpython-312.pyc
+database/bunny_detect.db
