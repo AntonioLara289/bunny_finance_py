@@ -176,7 +176,7 @@ class EscanerRostro(QtWidgets.QWidget):
             index += 1    
             
 
-        self.cap = cv2.VideoCapture(4)
+        self.cap = cv2.VideoCapture(0)
         print('Lista de camaras: ', arr)
 
         # Timer que lee frames cada 30 ms
