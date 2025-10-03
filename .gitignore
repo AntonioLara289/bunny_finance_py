@@ -25,3 +25,4 @@ src/img/personas
 
 database/bunny_detect.db
 *.pyc
+database/bunny_detect.db

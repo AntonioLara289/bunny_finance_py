@@ -45,11 +45,11 @@ if __name__ == "__main__":
     ##Acciones de los botones
     button_action.triggered.connect(window.toolbar_button_clicked)
 
-    window.BotonCapturarAsistencia(file_menu)
     window.BotonEscaneo(file_menu)
     window.BotonRegistro(file_menu)
     window.BotonConsultas(file_menu)
     window.BotonSalir(file_menu)
+
     about_menu = menu.addMenu("Acerca")
 
     window.resize(800, 600)

@@ -33,7 +33,6 @@ from ui.consultas import Consultas
 from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
-from ui.capturaAsistencias import CapturaAsistencias
 from ui.Historial import Historial
 try:
     # import cv2
@@ -174,14 +173,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.pantallaMostrandose)
 
-    def mostrarVistaCapturaAsistencias(self):
-
-        self.destroyActual()
-        print("Mostrando la pantalla de captura de asistencias")
-        self.pantallaMostrandose = CapturaAsistencias()
-
-        self.stack.setCurrentWidget(self.pantallaMostrandose)
-
     def salir(self):
         self.pantallaMostrandose.destroy()
         QtWidgets.QApplication.quit()
@@ -209,6 +200,15 @@ class MainWindow(QtWidgets.QMainWindow):
         # conectas la acción
         button_historial_registro.triggered.connect(lambda: window.mostrarVistaHistorial())
         return button_historial_registro
+    
+    def destroyActual(self):
+
+        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+        
+        self.pantallaMostrandose.close()
+        # self.stack.removeWidget(self.pantallaMostrandose)
+        self.pantallaMostrandose.deleteLater()
+        self.pantallaMostrandose = None
 
     def BotonConsultas(window, file_menu):
         button_consulta_personas = QAction("Consulta asistencias", window)
@@ -220,14 +220,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # conectas la acción
         button_consulta_personas.triggered.connect(lambda: window.mostrarVistaConsultas())
         return button_consulta_personas
-    
-    def BotonCapturarAsistencia(window, file_menu):
-        boton_capturar_asistencia = QAction("Captura asistencias", window)
-        boton_capturar_asistencia.setStatusTip("Pantalla de Captura de asistencias")
-
-        file_menu.addAction(boton_capturar_asistencia)
-        
-        boton_capturar_asistencia.triggered.connect(lambda: window.mostrarVistaCapturaAsistencias())
 
     def BotonSalir(window, file_menu):
         file_menu.addSeparator()
@@ -240,12 +232,3 @@ class MainWindow(QtWidgets.QMainWindow):
         # conectas la acción
         button_salir.triggered.connect(lambda: window.salir())
         return button_salir
-    
-    def destroyActual(self):
-
-        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        
-        self.pantallaMostrandose.close()
-        # self.stack.removeWidget(self.pantallaMostrandose)
-        self.pantallaMostrandose.deleteLater()
-        self.pantallaMostrandose = None
