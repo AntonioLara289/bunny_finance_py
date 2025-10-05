@@ -32,9 +32,9 @@ class DBManager:
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS personas (id_persona INTEGER PRIMARY KEY AUTOINCREMENT, nombre_persona TEXT NOT NULL, imagen TEXT NOT NULL, encodes TEXT NOT NULL, created_at TEXT NOT NULL)")
+        self.crearTablaPersonas()
 
-            # Ahora sí, seleccionamos datos
+        # Ahora sí, seleccionamos datos
         self.cursor.execute("SELECT * FROM personas")
 
         filas = self.cursor.fetchall()
@@ -108,9 +108,9 @@ class DBManager:
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        data = (nombre_persona, imagen, encodes, datetime.now().isoformat())
+        data = (nombre_persona, imagen, encodes, 1, datetime.now().isoformat())
 
-        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encodes, created_at) VALUES (?, ?, ?, ?)", data)
+        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encodes, estatus, created_at) VALUES (?, ?, ?, ?, ?)", data)
 
         self.conn.commit()
         self.conn.close()
