@@ -30,6 +30,7 @@ from PySide6.QtGui import (
 # from PySide6.QtCore import Qt
 # from database.db_manager import DBManager
 from ui.consultas import Consultas
+from ui.asistencia import Asistencia
 from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
@@ -123,7 +124,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def mostrarVistaHistorial(self):
 
-
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
         self.destroyActual()
 
@@ -135,7 +135,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.pantallaMostrandose)
-        
+        3
     def mostrarVistaConsultas(self):
         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
         self.destroyActual()
@@ -148,17 +148,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.pantallaMostrandose)
 
-    def mostrarVistaConsultas(self):
-            #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-            self.pantallaMostrandose.destroy()
+    def mostrarVistaAsistencia(self):
+         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
+        self.pantallaMostrandose.destroy()
             
-            print("Mostrando vista Consultas")
-            # Agregar pantallas
-            self.consultas = Consultas()
-            self.stack.addWidget(self.consultas)
+        print("Mostrando vista Asistencia")
+        # Agregar pantallas
+        self.asistencia = Asistencia()
+        self.stack.addWidget(self.asistencia)
 
-            # Mostrar esa pantalla
-            self.stack.setCurrentWidget(self.consultas)
+        # Mostrar esa pantalla
+        self.stack.setCurrentWidget(self.asistencia)
             
     def mostrarVistaEscaneo(self):
 
@@ -180,7 +180,7 @@ class MainWindow(QtWidgets.QMainWindow):
     # Botones para interfaz
     def BotonEscaneo(window, file_menu):
         file_menu.addSeparator()
-        button_escaneo_rostro = QAction("Escaneo de rostro", window)
+        button_escaneo_rostro = QAction("Registro de rostro", window)
         button_escaneo_rostro.setStatusTip("Escaneo de rostro con cámara")
         
         # lo agregas al menú o toolbar
@@ -191,7 +191,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return button_escaneo_rostro
 
     def BotonRegistro(window, file_menu):
-        button_historial_registro = QAction("Historial de registro", window)
+        button_historial_registro = QAction("Historial", window)
         button_historial_registro.setStatusTip("Historial de las detecciones")
         
         # lo agregas al menú o toolbar
@@ -211,8 +211,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pantallaMostrandose = None
 
     def BotonConsultas(window, file_menu):
-        button_consulta_personas = QAction("Consulta asistencias", window)
-        button_consulta_personas.setStatusTip("Consulta del registro de personas y asistencias")
+        button_consulta_personas = QAction("Consultas", window)
+        button_consulta_personas.setStatusTip("Consulta del registro de personas y estatus")
         
         # lo agregas al menú o toolbar
         file_menu.addAction(button_consulta_personas)
@@ -220,6 +220,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # conectas la acción
         button_consulta_personas.triggered.connect(lambda: window.mostrarVistaConsultas())
         return button_consulta_personas
+
+    def BotonAsistencia(window, file_menu):
+        butoon_asistencia = QAction("Asistencia", window)
+        butoon_asistencia.setStatusTip("Pantalla de toma e asistencia")
+        
+        # lo agregas al menú o toolbar
+        file_menu.addAction(butoon_asistencia)
+
+        # conectas la acción
+        butoon_asistencia.triggered.connect(lambda: window.mostrarVistaAsistencia())
+        return butoon_asistencia
 
     def BotonSalir(window, file_menu):
         file_menu.addSeparator()

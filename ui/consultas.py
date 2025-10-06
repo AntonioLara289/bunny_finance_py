@@ -31,12 +31,11 @@ class Consultas(QtWidgets.QWidget):
             status_combo = QComboBox()
             status_combo.addItems(["activado", "desactivado", "pendiente"])
 
-            status_map_reverse = {1: "activado", 0: "desactivado", 2: "pendiente"}
+            status_map_reverse = { 1: "activado", 0: "desactivado", 2: "pendiente" }
             status_combo.setCurrentText(status_map_reverse.get(persona[4], "desactivado"))
 
             status_combo.currentTextChanged.connect(lambda text, pid=persona[0]: self.update_status(pid, text))
-        self.table.setCellWidget(row_idx, 4, status_combo)
-
+            self.table.setCellWidget(row_idx, 4, status_combo)
         layout.addWidget(self.table)
 
         # Conectar búsqueda

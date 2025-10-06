@@ -1,46 +1,155 @@
-/* General font */
-QWidget {
+/* Estilo global, afecta a todos los widgets */
+QWidget
+{
     font-family: "Segoe UI";
     font-size: 12px;
-    background-color: #171717;  /* Window background */
-    color: #EDEDED;             /* Text color */
-    background-image: url("src/img/background.png");
+    color: #00334d;
+}
+
+/* Background */
+QMainWindow
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #e0f7ff,
+        stop:0.5 #a8e4ff,
+        stop:1 #88c9ff
+    );
+}
+
+QMenuBar
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #e0f7ff,
+        stop:0.5 #a8e4ff,
+        stop:1 #88c9ff
+    );
+}
+
+QMenuBar::item 
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #e0f7ff,
+        stop:0.5 #a8e4ff,
+        stop:1 #88c9ff
+    );
+}
+
+QMenuBar::item:selected 
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6ac7ff,
+        stop:1 #2b9fff
+    );
+}
+
+QMenu
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #e0f7ff,
+        stop:0.5 #a8e4ff,
+        stop:1 #88c9ff
+    );
+}
+
+QMenu::item:selected 
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6ac7ff,
+        stop:1 #2b9fff
+    );
 }
 
 /* Buttons */
-QPushButton {
-    background-color: #444444;
-    border: 3px solid #FFFFFF;
-    border-radius: 4px;
-    padding: 6px 12px;
+QPushButton
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #d0f0ff,
+        stop:0.5 #8bd0ff,
+        stop:1 #59a7ff
+    );
+    border: 2px solid #ffffff;
+    border-radius: 15px;
+    font-weight: bold;
+    padding: 8px 16px;
 }
 
-QPushButton:hover {
-    background-color: #FFFFF;
+QPushButton:hover 
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #f0ffff,
+        stop:0.5 #9be4ff,
+        stop:1 #6ac7ff
+    );
 }
 
-QPushButton:pressed {
-    background-color: #FFFFF;
+QPushButton:pressed
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6ac7ff,
+        stop:1 #2b9fff
+    );
 }
 
 /* Tables */
-QTableWidget {
-    gridline-color: #666;
-    selection-background-color: #444444;
-    alternate-background-color: #3b3b3b;
+QTableWidget
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6ac7ff,
+        stop:1 #2b9fff
+    );
 }
 
-QHeaderView::section {
-    background-color: #444444;
+QHeaderView::section 
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6ac7ff,
+        stop:1 #2b9fff
+    );
     padding: 4px;
     border: 1px solid #666;
     font-weight: bold;
 }
 
-/*
-Colors Darker -> Brighter
-    #171717 BLACK
-    #444444 GRAY
-    #DA0037 RED
-    #EDEDED WHITE
-*/
+QComboBox 
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6ac7ff,
+        stop:1 #2b9fff
+    );
+}
+
+QComboBox:hover
+{
+    background-color: #6cc3ff;
+}
+
+QAbstractItemView {
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #e0f7ff,
+        stop:0.5 #a8e4ff,
+        stop:1 #88c9ff
+    );
+}
+
+QLineEdit
+{
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #e0f7ff,
+        stop:0.5 #a8e4ff,
+        stop:1 #88c9ff
+    );
+}

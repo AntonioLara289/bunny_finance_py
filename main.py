@@ -48,6 +48,7 @@ if __name__ == "__main__":
     window.BotonEscaneo(file_menu)
     window.BotonRegistro(file_menu)
     window.BotonConsultas(file_menu)
+    window.BotonAsistencia(file_menu)
     window.BotonSalir(file_menu)
 
     about_menu = menu.addMenu("Acerca")

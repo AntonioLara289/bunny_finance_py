@@ -27,12 +27,10 @@ from database.db_manager import DBManager
 import time
 
 class EscanerRostro(QtWidgets.QWidget):
-    
     def __init__(self):
         super().__init__()
         
         self.directorio_guardar = "src/capturas_personas/"
-
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(QtWidgets.QLabel("Soy la pantalla de escaner"))
 
