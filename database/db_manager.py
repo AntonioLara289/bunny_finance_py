@@ -146,3 +146,20 @@ class DBManager:
         
     def dbConection(self):
         return sqlite3.connect(self.db_path)
+
+    def update_status(self, person_id, new_status):
+        status_map = {
+            "activado": 1,
+            "desactivado": 0,
+            "pendiente": 2
+        }
+        status_value = status_map.get(new_status, 0)
+
+        self.conn = sqlite3.connect(self.db_path)
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "UPDATE personas SET estatus = ? WHERE id_persona = ?",
+            (status_value, person_id)
+        )
+        self.conn.commit()
+        self.conn.close()

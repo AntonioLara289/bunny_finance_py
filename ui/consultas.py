@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets, QtCore
-from PySide6.QtWidgets import QLineEdit, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import QLineEdit, QTableWidget, QTableWidgetItem, QComboBox
 from database.db_manager import DBManager
 
 class Consultas(QtWidgets.QWidget):
@@ -23,11 +23,19 @@ class Consultas(QtWidgets.QWidget):
 
         # Llenar tabla
         for row_idx, persona in enumerate(self.getPersonas):
-            self.table.setItem(row_idx, 0, QTableWidgetItem(str(persona[0])))
-            self.table.setItem(row_idx, 1, QTableWidgetItem(str(persona[1])))
-            self.table.setItem(row_idx, 2, QTableWidgetItem("1"))
-            self.table.setItem(row_idx, 3, QTableWidgetItem(str(persona[4])))
-            self.table.setItem(row_idx, 4, QTableWidgetItem("Desavtivado"))
+            self.table.setItem(row_idx, 0, QTableWidgetItem(str(persona[0]))) # ID
+            self.table.setItem(row_idx, 1, QTableWidgetItem(str(persona[1]))) # Nombre
+            self.table.setItem(row_idx, 2, QTableWidgetItem("1")) # Cantidad de muestras
+            self.table.setItem(row_idx, 3, QTableWidgetItem(str(persona[5]))) # Fecha de registro
+
+            status_combo = QComboBox()
+            status_combo.addItems(["activado", "desactivado", "pendiente"])
+
+            status_map_reverse = {1: "activado", 0: "desactivado", 2: "pendiente"}
+            status_combo.setCurrentText(status_map_reverse.get(persona[4], "desactivado"))
+
+            status_combo.currentTextChanged.connect(lambda text, pid=persona[0]: self.update_status(pid, text))
+        self.table.setCellWidget(row_idx, 4, status_combo)
 
         layout.addWidget(self.table)
 
@@ -35,8 +43,11 @@ class Consultas(QtWidgets.QWidget):
         self.search_box.textChanged.connect(self.filter_table)
 
     def filter_table(self, text):
-        """Filtrar filas de la tabla por nombre."""
         for row in range(self.table.rowCount()):
             item = self.table.item(row, 1)  # Nombre
             if item:
                 self.table.setRowHidden(row, text.lower() not in item.text().lower()) # Mostrar solo si coincide
+
+    def update_status(self, person_id, new_status):
+        print(f"Actualizando ID {person_id} a {new_status}")  # Para depurar
+        self.dbManager.update_status(person_id, new_status)
