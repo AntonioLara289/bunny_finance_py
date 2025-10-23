@@ -34,9 +34,6 @@ class EscanerRostro(QtWidgets.QWidget):
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(QtWidgets.QLabel("Soy la pantalla de escaner"))
 
-        # scroll_area = QScrollArea()
-        # self.layout.addWidget(scroll_area)
-        # self.foto_capturada = None
         self.encoding_foto_capturada = None
         self.encodings_db = list()
         self.nombres_personas_db = list()
@@ -61,33 +58,32 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_guardar_foto = self.botonGuardarFoto()
 
         self.frame_camera = QLabel(self)
+        self.frames_camera = []
+
+
         self.cam_live = QLabel(self)
         # self.label_foto_capturada = QLabel(self)
         # self.foto_de_camara = QLabel(self)
-        self.input_nombre_foto = QLineEdit()
-        self.input_nombre_foto.setPlaceholderText("Introduzca el nombre de la foto")
-        self.input_nombre_foto.textChanged.connect(lambda text: print(f"El texto cambio {text}"))
-        self.input_nombre_foto.text()
+        # self.input_nombre_foto = QLineEdit()
+        # self.input_nombre_foto.setPlaceholderText("Introduzca el nombre de la foto")
+        # self.input_nombre_foto.textChanged.connect(lambda text: print(f"El texto cambio {text}"))
+        # self.input_nombre_foto.text()
 
         # content_widget = QWidget()
         # content_layout = QtWidgets.QVBoxLayout(content_widget)
         # content_layout.addWidget(QLabel(self.label_foto_capturada))
 
-        # scroll_area.setWidget(content_widget)
-        # self.layout.addWidget(self.label_foto_capturada)
+        self.layout.addWidget(self.frame_camera)
         self.layout.addWidget(self.cam_live, alignment=Qt.AlignCenter)
-        # self.layout.addWidget(self.foto_de_camara)
-        # scroll_area.setWidget(self.label_foto_capturada)
-        # self.layout.addWidget(self.frame_camera)
         self.layout.addWidget(self.boton_abrir_camara)
         self.layout.addWidget(self.boton_cerrar_camara)
         self.layout.addWidget(self.boton_guardar_foto)
-        self.layout.addWidget(self.input_nombre_foto)
+        # self.layout.addWidget(self.input_nombre_foto)
 
         #La ocultamos ya que la mostrará y ocultara muchas veces
         self.boton_cerrar_camara.hide()
         self.boton_guardar_foto.hide()
-        self.input_nombre_foto.hide()
+        # self.input_nombre_foto.hide()
 
         # self.pantalla = QGuiApplication.primaryScreen()
         # self.medidas_pantalla = self.pantalla.size()
@@ -96,12 +92,8 @@ class EscanerRostro(QtWidgets.QWidget):
         self.timer_update.start(30)
         
         self.mp_face_detection = mp.solutions.face_detection
-        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=1.0)
-        # self.mp_drawing = mp.solutions.drawing_utils
-
-        known_image = face_recognition.load_image_file("src/img/gabe.jpeg")
-        self.known_encodings = face_recognition.face_encodings(known_image)[0]
-
+        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5)
+        
         # if not self.known_encodings:
         #     print("No se encontró rostro en la imagen conocida.")
         #     exit()
@@ -282,7 +274,7 @@ class EscanerRostro(QtWidgets.QWidget):
 
                         nombre += ", ID: " + str(id)
 
-                        self.boton_guardar_foto.setEnabled(False)
+                        # self.boton_guardar_foto.setEnabled(False)
 
                         if id in self.ids_personas_db:
                             pass
@@ -386,7 +378,6 @@ class EscanerRostro(QtWidgets.QWidget):
         self.cap.release()
         # type(self.frame_camera)
         if self.frame_camera is not None:
-            file_name = "captura.png"
             # cv2.imwrite(file_name, self.frame_camera)
 
             # print(f"Imagen guardada capturada")
@@ -395,8 +386,7 @@ class EscanerRostro(QtWidgets.QWidget):
             h, w, ch = rgb.shape
             qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(qimg)
-            # self.label_foto_capturada.setPixmap(pixmap)
-            print('self.encoding_foto_capturada: ', self.encoding_foto_capturada)
+            
             self.modal = NombrarFotoCapturada(self, data=pixmap, 
                                               imagen=self.frame_camera, 
                                               encodigns=self.encoding_foto_capturada)
