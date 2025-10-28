@@ -1,7 +1,10 @@
 # .gitignore
+
 # Entorno virtual
 .venv/
 venv/
+mi_entorno/
+dlib/
 
 # Archivos de Python compilados
 __pycache__/
@@ -17,3 +20,8 @@ __pycache__/
 
 # Archivos de dependencia de MediaPipe y OpenCV
 opencv_cache/
+
+src/img/personas
+
+database/bunny_detect.db
+*.pyc
