@@ -6,7 +6,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QScrollArea,
     QWidget,
-    QDialog
+    QDialog,
+    QVBoxLayout
 )
 from PySide6.QtGui import (
     QImage,
@@ -50,8 +51,8 @@ class EscanerRostro(QtWidgets.QWidget):
 
         # scroll_area.setWidget(content_widget)
 
-        self.pantalla = QGuiApplication.primaryScreen()
-        self.medidas_pantalla = self.pantalla.size()
+        # self.pantalla = QGuiApplication.primaryScreen()
+        self.medidas_pantalla = QGuiApplication.primaryScreen().size()
 
         self.boton_abrir_camara = self.botonInicializarCamara()
         self.boton_cerrar_camara = self.botonCerrarCamara()
@@ -60,6 +61,16 @@ class EscanerRostro(QtWidgets.QWidget):
         self.frame_camera = QLabel(self)
         self.frames_camera = []
 
+         # ----- Scroll area -----
+        self.scrollBarAreaFotos = QScrollArea()
+        self.scrollBarAreaFotos.setWidgetResizable(True)  # 👈 importante
+        self.content_widget_scroll_bar = QWidget()
+
+        self.layout_scroll_bar = QVBoxLayout(self.content_widget_scroll_bar)
+        self.layout_scroll_bar.setContentsMargins(10, 10, 10, 10)
+        self.layout_scroll_bar.setSpacing(10)
+
+        self.scrollBarAreaFotos.setWidget(self.content_widget_scroll_bar)
 
         self.cam_live = QLabel(self)
         # self.label_foto_capturada = QLabel(self)
@@ -73,6 +84,7 @@ class EscanerRostro(QtWidgets.QWidget):
         # content_layout = QtWidgets.QVBoxLayout(content_widget)
         # content_layout.addWidget(QLabel(self.label_foto_capturada))
 
+        self.layout.addWidget(self.scrollBarAreaFotos)
         self.layout.addWidget(self.frame_camera)
         self.layout.addWidget(self.cam_live, alignment=Qt.AlignCenter)
         self.layout.addWidget(self.boton_abrir_camara)
@@ -365,22 +377,36 @@ class EscanerRostro(QtWidgets.QWidget):
         #     self.cam_live.setPixmap(pixmap)
 
 
-    def capturarFoto(self):
+    # DEPRECADO
+    # def capturarFoto(self):
         
+    #     if self.frame_camera is not None:
+    #         rgb = cv2.cvtColor(self.frame_actual, cv2.COLOR_BGR2RGB)
+    #         h, w, ch = rgb.shape
+    #         qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+    #         pixmap = QPixmap.fromImage(qimg)
+    #         # self.label_foto_capturada.setPixmap(pixmap)
+
+    def guardarFoto(self):
+
         if self.frame_camera is not None:
-            rgb = cv2.cvtColor(self.frame_actual, cv2.COLOR_BGR2RGB)
+            rgb = cv2.cvtColor(self.frame_camera, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb.shape
             qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(qimg)
-            # self.label_foto_capturada.setPixmap(pixmap)
+            pixmap_label = QLabel()
+            pixmap_label.setPixmap(pixmap)
+            pixmap_label.setFixedSize(100, 100)
+            pixmap_label.setScaledContents(True)
+            
+            if len(self.frames_camera) < 2:
+                # Agregamos la imagen al layout
+                self.layout_scroll_bar.addWidget(pixmap_label)
+                self.frames_camera.append(self.frame_camera)
+                print(f"Aún no, fotos {len(self.frames_camera)}")
+                return
 
-    def guardarFoto(self):
-        self.cap.release()
-        # type(self.frame_camera)
-        if self.frame_camera is not None:
-            # cv2.imwrite(file_name, self.frame_camera)
-
-            # print(f"Imagen guardada capturada")
+            self.cap.release()
 
             rgb = cv2.cvtColor(self.frame_camera, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb.shape
