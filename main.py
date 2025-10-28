@@ -51,6 +51,7 @@ if __name__ == "__main__":
     window.BotonAsistencia(file_menu)
     window.BotonSalir(file_menu)
 
+    style_menu = menu.addMenu("Estilos")
     about_menu = menu.addMenu("Acerca")
 
     window.resize(800, 600)
