@@ -46,13 +46,6 @@ class EscanerRostro(QtWidgets.QWidget):
         self.dbManager = DBManager()
         self.cargarDatosPersonas()
 
-        # Add your content (e.g., many QLabels) to content_layout
-        #ESTO AGREGA SOLO 20 Items para el apartado del scroll pero fue destacado por la ventana modal
-        # for i in range(20):
-        #     content_layout.addWidget(QLabel(f"Item {i}"))
-
-        # scroll_area.setWidget(content_widget)
-
         self.pantalla = QGuiApplication.primaryScreen()
         self.medidas_pantalla = self.pantalla.size()
 
@@ -102,20 +95,8 @@ class EscanerRostro(QtWidgets.QWidget):
         known_image = face_recognition.load_image_file("src/img/gabe.jpeg")
         self.known_encodings = face_recognition.face_encodings(known_image)[0]
 
-        # if not self.known_encodings:
-        #     print("No se encontró rostro en la imagen conocida.")
-        #     exit()
-
-        # self.dialog = DialogExample()
-        # self.dialog.show()
-        #Marca error de formato en este apartado#
-
-
     def update(self):
         pass
-        # print(f"Altura de la pantalla: {self.medidas_pantalla.width()}")
-        # print(f"Ancho de la pantalla: {self.medidas_pantalla.height()}")
-
 
     def botonInicializarCamara(self):
         boton_abrir_camara = QPushButton("Abrir Cámara")
@@ -181,38 +162,6 @@ class EscanerRostro(QtWidgets.QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.leerDatosCamara)
         self.timer.start(30)
-
-        ##Codigo deprecado, da errores y ya se adapto correctamente
-        # Open the default camera
-        # cam = cv2.VideoCapture(0)
-
-        # # Get the default frame width and height
-        # frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
-        # frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        # # Define the codec and create VideoWriter object
-        # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        # out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (frame_width, frame_height))
-
-        # while True:
-        #     ret, frame = cam.read()
-
-        #     self.foto_capturar = frame
-
-        #     # # Write the frame to the output file
-        #     out.write(frame)
-
-        #     # # Display the captured frame
-        #     # cv2.imshow('Camera', frame)
-
-        #     # Press 'q' to exit the loop
-        #     if cv2.waitKey(1) == ord('q'):
-        #         break
-
-        # # Release the capture and writer objects
-        # cam.release()
-        # # out.release()
-        # cv2.destroyAllWindows()
 
     def leerDatosCamara(self):
 
@@ -298,60 +247,6 @@ class EscanerRostro(QtWidgets.QWidget):
                     cv2.rectangle(rgb_frame, (left, top), (right, bottom), color, 2)
                     cv2.putText(rgb_frame, nombre, (left, top - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2, cv2.LINE_AA)
-
-                
-                # Ahora usar face_recognition para obtener los encodings
-                # face_locations = face_recognition.face_locations(rgb_frame)
-                # face_encodings = face_recognition.face_encodings(frame, face_locations)
-                # print('face_encodings: ', face_encodings)
-
-                # self.encoding_foto_capturada = face_encodings
-
-                # if face_encodings:
-
-                #     for encoding in face_encodings:
-                #         # print("Encoding obtenido:", encoding)
-                #         resultados = face_recognition.compare_faces(self.encodings_db, encoding)
-                #         # distancia = face_recognition.face_distance(self.known_encodings, encoding)
-                #         # print(f'Validación de comparación de datos biometricos', resultados)
-
-                #         if True in resultados:
-                            
-                #             index = resultados.index(True)
-                #             nombre = self.nombres_personas_db[index]
-
-                #             #Dibujar el nombre en la detección
-                #             cv2.putText(
-                #                 rgb_frame,
-                #                 nombre,
-                #                 (x, y - 10),  # posición (arriba del rectángulo)
-                #                 cv2.FONT_HERSHEY_SIMPLEX,
-                #                 0.9,  # tamaño de la fuente
-                #                 (0, 255, 0),  # color (verde)
-                #                 2,  # grosor
-                #                 cv2.LINE_AA
-                #             )
-
-                #             print(f'La persona es {nombre}')
-
-                #         else:
-                #                                     #Dibujar el nombre en la detección
-                #             cv2.putText(
-                #                 rgb_frame,
-                #                 "Desconocido",
-                #                 (x, y - 10),
-                #                 cv2.FONT_HERSHEY_SIMPLEX,
-                #                 0.9,
-                #                 (0, 0, 255),  # rojo
-                #                 2,
-                #                 cv2.LINE_AA
-                #             )
-
-                #             print(f'La persona no esta registrada')
-
-                # else:
-                #     # No se pudo obtener el encoding con face_recognition
-                #     print("No se detectó algun rostro")
         else:
             
             pass
@@ -361,17 +256,6 @@ class EscanerRostro(QtWidgets.QWidget):
         bytes_per_line = ch * w
         qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
         self.cam_live.setPixmap(QPixmap.fromImage(qt_image))
-
-        # if ret:
-
-        #     # Aquí conviertes el frame a QImage y lo muestras en un QLabel
-        #     self.foto_de_camara = frame
-        #     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        #     h, w, ch = rgb.shape
-        #     qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
-        #     pixmap = QPixmap.fromImage(qimg)
-        #     self.cam_live.setPixmap(pixmap)
-
 
     def capturarFoto(self):
         
@@ -387,10 +271,6 @@ class EscanerRostro(QtWidgets.QWidget):
         # type(self.frame_camera)
         if self.frame_camera is not None:
             file_name = "captura.png"
-            # cv2.imwrite(file_name, self.frame_camera)
-
-            # print(f"Imagen guardada capturada")
-
             rgb = cv2.cvtColor(self.frame_camera, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb.shape
             qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)

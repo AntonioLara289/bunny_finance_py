@@ -6,6 +6,14 @@ QWidget
     color: #00334d;
 }
 
+QMenu::separator 
+{
+    height: 1px;                 /* thickness of the line */
+    background-color: #00334d;
+    margin: 6px 12px;            /* top/bottom and left/right spacing */
+    border-radius: 1px;
+}
+
 /* Background */
 QMainWindow
 {
