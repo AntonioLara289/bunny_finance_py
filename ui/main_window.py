@@ -1,34 +1,9 @@
 import sys
 import random
 from PySide6 import QtCore, QtWidgets
-# from PySide6.QtCore import (
-#     QSize, 
-#     Qt
-# )
 from PySide6.QtGui import (
-    QAction, 
-    # QIcon,
-    # QKeySequence,
-    # QGuiApplication
+    QAction
 )
-# from PySide6.QtWidgets import (
-#     QApplication,
-#     QCheckBox,
-#     QLabel,
-#     QMainWindow,
-#     QStatusBar,
-#     QToolBar,
-#     QApplication,
-#     QCheckBox,
-#     QLabel,
-#     QMainWindow,
-#     QStatusBar,
-#     QToolBar,
-#     QWidgetAction,
-#     QScrollArea
-# )
-# from PySide6.QtCore import Qt
-# from database.db_manager import DBManager
 from ui.consultas import Consultas
 from ui.asistencia import Asistencia
 from ui.camera import CameraWidget
@@ -36,8 +11,6 @@ from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
 from ui.Historial import Historial
 try:
-    # import cv2
-    # import face_recognition
     import mediapipe as mp
 
     print("OpenCV importado correctamente")
@@ -179,7 +152,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Botones para interfaz
     def BotonEscaneo(window, file_menu):
-        file_menu.addSeparator()
         button_escaneo_rostro = QAction("Registro de rostro", window)
         button_escaneo_rostro.setStatusTip("Escaneo de rostro con cámara")
         
@@ -191,6 +163,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return button_escaneo_rostro
 
     def BotonRegistro(window, file_menu):
+        file_menu.addSeparator()
         button_historial_registro = QAction("Historial", window)
         button_historial_registro.setStatusTip("Historial de las detecciones")
         
