@@ -1,4 +1,11 @@
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
+from PySide6.QtWidgets import (
+    QLineEdit, QTableWidget, QTableWidgetItem, QComboBox,
+    QLabel, QVBoxLayout
+)
+from ui.camaraReconocimientoWidget import CameraRecognitionWidget
+from database.db_manager import DBManager
+import json
 
 asistencias_status = { 1: "Asistió", 0: "No asistió" }
 
