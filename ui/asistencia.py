@@ -16,16 +16,16 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Asistencia"))
 
-        # --- Base de datos ---
+        # Base de datos
         self.dbManager = DBManager()
         self.getPersonas = self.dbManager.getPersonas()
 
-        # --- Cargar encodings ---
+        # Cargar encodings
         self.encodings = [json.loads(p[3]) for p in self.getPersonas]
         self.names = [p[1] for p in self.getPersonas]
         self.ids = [p[0] for p in self.getPersonas]
 
-        # --- Widget de cámara reutilizable ---
+        # Implementacion Widget de camara
         self.camera_widget = CameraRecognitionWidget(
             encodings_db=self.encodings,
             names_db=self.names,
@@ -33,10 +33,10 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         )
         layout.addWidget(self.camera_widget, alignment=QtCore.Qt.AlignCenter)
 
-        # --- Conectar señal de reconocimiento ---
+        # Conectar con reconocimiento
         self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
 
-        # --- Tabla de personas ---
+        # Tabla de personas
         rows = self.dbManager.getRows()
         self.table = QTableWidget(rows, 4)
         self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Similitud", "Asistencia"])
@@ -51,13 +51,13 @@ class AsistenciaPantalla(QtWidgets.QWidget):
 
         layout.addWidget(self.table)
 
-    # --- Cuando se detecta una cara ---
+    # Al detectar un rostro
     def actualizarAsistencia(self, name, id_, similarity):
         for row in range(self.table.rowCount()):
             id_item = self.table.item(row, 0)
             if id_item and int(id_item.text()) == id_:
+                self.table.item(row, 2).setText(f"{similarity}%")
                 if similarity >= 62:
-                    self.table.item(row, 2).setText(f"{similarity}%")
                     combo = self.table.cellWidget(row, 3)
                     combo.setCurrentText("Asistió")
                     break

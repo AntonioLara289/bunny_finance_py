@@ -31,19 +31,12 @@ if __name__ == "__main__":
     load_stylesheet(app, "styles/style.qss")
 
     window = MainWindow()
-
-    button_action = QAction("Your button", window)
-    button_action.setStatusTip("This is your button")
     
     window.setStatusBar(QStatusBar(window))
 
     menu = window.menuBar()
 
     file_menu = menu.addMenu("Opciones")
-    file_menu.addAction(button_action)
-
-    ##Acciones de los botones
-    button_action.triggered.connect(window.toolbar_button_clicked)
 
     window.BotonEscaneo(file_menu)
     window.BotonRegistro(file_menu)
@@ -52,6 +45,18 @@ if __name__ == "__main__":
     window.BotonSalir(file_menu)
 
     style_menu = menu.addMenu("Estilos")
+    #window.BotonAero(stlye_menu)
+    #window.BotonAeroDark(stlye_menu)
+    buttonAero = QAction("Aero", window)
+    buttonAero.setStatusTip("Estilo Frutiger Aero")
+    style_menu.addAction(buttonAero)
+    buttonAero.triggered.connect(lambda: load_stylesheet(app, "styles/style.qss"))
+
+    buttonAeroDark = QAction("Aero Dark", window)
+    buttonAeroDark.setStatusTip("Estilo Frutiger Aero Dark")
+    style_menu.addAction(buttonAeroDark)
+    buttonAeroDark.triggered.connect(lambda: load_stylesheet(app, "styles/frutigerdark.qss"))
+
     about_menu = menu.addMenu("Acerca")
 
     window.resize(800, 600)
