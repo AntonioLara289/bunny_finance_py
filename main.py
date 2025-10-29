@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 )
 import dlib
+from ui.animated_menu import AnimatedMenu
 
 # Style loader
 def load_stylesheet(app, filename):
@@ -36,7 +37,9 @@ if __name__ == "__main__":
 
     menu = window.menuBar()
 
-    file_menu = menu.addMenu("Opciones")
+    # Opciones
+    file_menu = AnimatedMenu("Opciones", window)
+    menu.addMenu(file_menu)
 
     window.BotonEscaneo(file_menu)
     window.BotonRegistro(file_menu)
@@ -44,9 +47,10 @@ if __name__ == "__main__":
     window.BotonAsistencia(file_menu)
     window.BotonSalir(file_menu)
 
-    style_menu = menu.addMenu("Estilos")
-    #window.BotonAero(stlye_menu)
-    #window.BotonAeroDark(stlye_menu)
+    # Estilos
+    style_menu = AnimatedMenu("Estilos", window)
+    menu.addMenu(style_menu)
+
     buttonAero = QAction("Aero", window)
     buttonAero.setStatusTip("Estilo Frutiger Aero")
     style_menu.addAction(buttonAero)
@@ -57,7 +61,29 @@ if __name__ == "__main__":
     style_menu.addAction(buttonAeroDark)
     buttonAeroDark.triggered.connect(lambda: load_stylesheet(app, "styles/frutigerdark.qss"))
 
-    about_menu = menu.addMenu("Acerca")
+    buttonAeroGreen = QAction("Aero Green", window)
+    buttonAeroGreen.setStatusTip("Estilo Frutiger Aero verde")
+    style_menu.addAction(buttonAeroGreen)
+    buttonAeroGreen.triggered.connect(lambda: load_stylesheet(app, "styles/aerogreen.qss"))
+
+    buttonAeroSunset = QAction("Aero Sunset", window)
+    buttonAeroSunset.setStatusTip("Estilo Frutiger Aero sunset")
+    style_menu.addAction(buttonAeroSunset)
+    buttonAeroSunset.triggered.connect(lambda: load_stylesheet(app, "styles/aerosunset.qss"))
+
+    buttonAeroFrost = QAction("Aero Frost", window)
+    buttonAeroFrost.setStatusTip("Estilo Frutiger Aero Frost")
+    style_menu.addAction(buttonAeroFrost)
+    buttonAeroFrost.triggered.connect(lambda: load_stylesheet(app, "styles/aerofrost.qss"))
+
+    buttonAeroOrganic = QAction("Aero Organic", window)
+    buttonAeroOrganic.setStatusTip("Estilo Frutiger Aero Organic")
+    style_menu.addAction(buttonAeroOrganic)
+    buttonAeroOrganic.triggered.connect(lambda: load_stylesheet(app, "styles/aeroorganic.qss"))
+
+    # Acerca
+    about_menu = AnimatedMenu("Acerca", window)
+    menu.addMenu(about_menu)
 
     window.resize(800, 600)
     window.showMaximized()

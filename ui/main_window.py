@@ -243,3 +243,23 @@ class MainWindow(QtWidgets.QMainWindow):
         # conectas la acción
         button_salir.triggered.connect(lambda: window.salir())
         return button_salir
+
+def dropdownMenu(self, menu, button):
+        """Animate the menu appearing with a sliding effect"""
+        pos = button.mapToGlobal(button.rect().bottomLeft())
+        menu.move(pos)
+
+        start_rect = QRect(pos.x(), pos.y() - 10, menu.width(), 0)
+        end_rect = QRect(pos.x(), pos.y(), menu.sizeHint().width(), menu.sizeHint().height())
+
+        menu.setGeometry(start_rect)
+
+        animation = QPropertyAnimation(menu, b"geometry")
+        animation.setDuration(120)
+        animation.setStartValue(start_rect)
+        animation.setEndValue(end_rect)
+        animation.setEasingCurve(QEasingCurve.OutCubic)
+
+        # Important: keep a reference, or it gets garbage collected
+        self._animation = animation
+        animation.start()
