@@ -7,7 +7,7 @@ from ui.camaraReconocimientoWidget import CameraRecognitionWidget
 from database.db_manager import DBManager
 import json
 
-asistencias_status = {1: "Asistió", 0: "No asistió"}
+asistencias_status = { 1: "Asistió", 0: "No asistió" }
 
 class AsistenciaPantalla(QtWidgets.QWidget):
     def __init__(self):
@@ -56,7 +56,8 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         for row in range(self.table.rowCount()):
             id_item = self.table.item(row, 0)
             if id_item and int(id_item.text()) == id_:
-                self.table.item(row, 2).setText(f"{similarity}%")
-                combo = self.table.cellWidget(row, 3)
-                combo.setCurrentText("Asistió")
-                break
+                if similarity >= 62:
+                    self.table.item(row, 2).setText(f"{similarity}%")
+                    combo = self.table.cellWidget(row, 3)
+                    combo.setCurrentText("Asistió")
+                    break
