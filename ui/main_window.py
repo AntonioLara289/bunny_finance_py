@@ -5,7 +5,7 @@ from PySide6.QtGui import (
     QAction
 )
 from ui.consultas import Consultas
-from ui.asistencia import Asistencia
+from ui.asistencia import AsistenciaPantalla
 from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
@@ -127,11 +127,11 @@ class MainWindow(QtWidgets.QMainWindow):
             
         print("Mostrando vista Asistencia")
         # Agregar pantallas
-        self.asistencia = Asistencia()
-        self.stack.addWidget(self.asistencia)
+        self.pantalla = AsistenciaPantalla()
+        self.stack.addWidget(self.pantalla)
 
         # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.asistencia)
+        self.stack.setCurrentWidget(self.pantalla)
             
     def mostrarVistaEscaneo(self):
 
