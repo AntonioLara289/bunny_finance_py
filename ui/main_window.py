@@ -1,34 +1,9 @@
 import sys
 import random
 from PySide6 import QtCore, QtWidgets
-# from PySide6.QtCore import (
-#     QSize, 
-#     Qt
-# )
 from PySide6.QtGui import (
-    QAction, 
-    # QIcon,
-    # QKeySequence,
-    # QGuiApplication
+    QAction
 )
-# from PySide6.QtWidgets import (
-#     QApplication,
-#     QCheckBox,
-#     QLabel,
-#     QMainWindow,
-#     QStatusBar,
-#     QToolBar,
-#     QApplication,
-#     QCheckBox,
-#     QLabel,
-#     QMainWindow,
-#     QStatusBar,
-#     QToolBar,
-#     QWidgetAction,
-#     QScrollArea
-# )
-# from PySide6.QtCore import Qt
-# from database.db_manager import DBManager
 from ui.consultas import Consultas
 from ui.asistencia import AsistenciaPantalla
 from ui.camera import CameraWidget
@@ -36,8 +11,6 @@ from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
 from ui.Historial import Historial
 try:
-    # import cv2
-    # import face_recognition
     import mediapipe as mp
 
     print("OpenCV importado correctamente")
@@ -179,7 +152,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Botones para interfaz
     def BotonEscaneo(window, file_menu):
-        file_menu.addSeparator()
         button_escaneo_rostro = QAction("Registro de rostro", window)
         button_escaneo_rostro.setStatusTip("Escaneo de rostro con cámara")
         
@@ -191,6 +163,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return button_escaneo_rostro
 
     def BotonRegistro(window, file_menu):
+        file_menu.addSeparator()
         button_historial_registro = QAction("Historial", window)
         button_historial_registro.setStatusTip("Historial de las detecciones")
         
@@ -243,23 +216,3 @@ class MainWindow(QtWidgets.QMainWindow):
         # conectas la acción
         button_salir.triggered.connect(lambda: window.salir())
         return button_salir
-
-def dropdownMenu(self, menu, button):
-        """Animate the menu appearing with a sliding effect"""
-        pos = button.mapToGlobal(button.rect().bottomLeft())
-        menu.move(pos)
-
-        start_rect = QRect(pos.x(), pos.y() - 10, menu.width(), 0)
-        end_rect = QRect(pos.x(), pos.y(), menu.sizeHint().width(), menu.sizeHint().height())
-
-        menu.setGeometry(start_rect)
-
-        animation = QPropertyAnimation(menu, b"geometry")
-        animation.setDuration(120)
-        animation.setStartValue(start_rect)
-        animation.setEndValue(end_rect)
-        animation.setEasingCurve(QEasingCurve.OutCubic)
-
-        # Important: keep a reference, or it gets garbage collected
-        self._animation = animation
-        animation.start()

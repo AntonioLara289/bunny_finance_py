@@ -41,10 +41,10 @@ if __name__ == "__main__":
     file_menu = AnimatedMenu("Opciones", window)
     menu.addMenu(file_menu)
 
+    window.BotonAsistencia(file_menu)
     window.BotonEscaneo(file_menu)
     window.BotonRegistro(file_menu)
     window.BotonConsultas(file_menu)
-    window.BotonAsistencia(file_menu)
     window.BotonSalir(file_menu)
 
     # Estilos
