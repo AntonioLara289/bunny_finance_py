@@ -1,10 +1,10 @@
-# ui/widgets/camera_recognition_widget.py
 from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 import cv2
 import face_recognition
 import mediapipe as mp
+import numpy as np
 
 
 class CameraRecognitionWidget(QWidget):
@@ -36,14 +36,19 @@ class CameraRecognitionWidget(QWidget):
         self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.8)
 
         self.cap = None
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frame)
 
         # Conexiones
         self.btn_open.clicked.connect(self.start_camera)
         self.btn_close.clicked.connect(self.stop_camera)
 
+        self.setAttribute(Qt.WA_DeleteOnClose, True)  # ensures cleanup on close
+
     def start_camera(self):
+        if self.cap and self.cap.isOpened():
+            return  # already running
+
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
             self.cam_label.setText("No se pudo abrir la cámara")
@@ -51,28 +56,48 @@ class CameraRecognitionWidget(QWidget):
 
         self.btn_open.hide()
         self.btn_close.show()
-        self.timer.start(30)
+        self.timer.start(33)  # ~30 FPS
 
     def stop_camera(self):
+        # stop timer first
+        if self.timer.isActive():
+            self.timer.stop()
+
+        # release camera safely
         if self.cap and self.cap.isOpened():
             self.cap.release()
-        self.timer.stop()
+        self.cap = None
+
+        # clear frame
+        self.cam_label.clear()
         self.cam_label.setText("Cámara apagada")
+
         self.btn_open.show()
         self.btn_close.hide()
 
     def update_frame(self):
+        if not self.cap or not self.cap.isOpened():
+            return
+
         ret, frame = self.cap.read()
         if not ret:
             return
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.face_detection.process(rgb)
 
-        face_locations = face_recognition.face_locations(rgb)
-        face_encodings = face_recognition.face_encodings(rgb, face_locations)
+        # Use smaller frame for faster detection (optional)
+        small_frame = cv2.resize(rgb, (0, 0), fx=0.5, fy=0.5)
+        results = self.face_detection.process(small_frame)
+        face_locations = face_recognition.face_locations(small_frame)
+        face_encodings = face_recognition.face_encodings(small_frame, face_locations)
 
         for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
+            # Scale back up to original size
+            top *= 2
+            right *= 2
+            bottom *= 2
+            left *= 2
+
             name = "Desconocido"
             color = (0, 0, 255)
             similarity = 0.0
@@ -81,7 +106,7 @@ class CameraRecognitionWidget(QWidget):
             if self.encodings_db:
                 matches = face_recognition.compare_faces(self.encodings_db, encoding)
                 face_distances = face_recognition.face_distance(self.encodings_db, encoding)
-                best_match_index = face_distances.argmin() if len(face_distances) > 0 else None
+                best_match_index = np.argmin(face_distances) if len(face_distances) > 0 else None
 
                 if best_match_index is not None and matches[best_match_index]:
                     name = self.names_db[best_match_index]
@@ -94,12 +119,13 @@ class CameraRecognitionWidget(QWidget):
             cv2.putText(rgb, f"{name} {similarity:.1f}%", (left, top - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
-        # Convertir frame para QLabel
+        # Convert frame for QLabel
         h, w, ch = rgb.shape
         bytes_per_line = ch * w
         qt_image = QImage(rgb.data, w, h, bytes_per_line, QImage.Format_RGB888)
         self.cam_label.setPixmap(QPixmap.fromImage(qt_image))
 
     def closeEvent(self, event):
+        """Stop camera safely when the widget is closed or replaced."""
         self.stop_camera()
-        super().closeEvent(event)
+        event.accept()
