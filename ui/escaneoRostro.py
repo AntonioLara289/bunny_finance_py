@@ -1,5 +1,4 @@
 from PySide6 import QtWidgets
-# , QtCore, QtGui
 from PySide6.QtWidgets import (
     QPushButton,
     QLabel,
@@ -22,7 +21,6 @@ import mediapipe as mp
 import face_recognition
 import cv2
 import json
-# from ui.dialogs.example import DialogExample
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
 import time

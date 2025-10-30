@@ -8,7 +8,7 @@ import numpy as np
 
 
 class CameraRecognitionWidget(QWidget):
-    faceRecognized = Signal(str, int, float)  # name, id, similarity %
+    faceRecognized = Signal(str, int, float)  # nombre, id, similaridad
 
     def __init__(self, parent=None, encodings_db=None, names_db=None, ids_db=None):
         super().__init__(parent)
