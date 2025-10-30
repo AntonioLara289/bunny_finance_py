@@ -22,7 +22,6 @@ except Exception as e:
 
 
 class MainWindow(QtWidgets.QMainWindow):
-
     titulo_ventana = "Bunny Detect"
 
     def __init__(self):

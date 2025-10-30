@@ -2,6 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QAction
 from ui.main_window import MainWindow
+from PySide6.QtGui import QIcon
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -34,6 +35,7 @@ if __name__ == "__main__":
     window = MainWindow()
     
     window.setStatusBar(QStatusBar(window))
+    window.setWindowIcon(QIcon("icon.png")) # Icono de ventana
 
     menu = window.menuBar()
 
