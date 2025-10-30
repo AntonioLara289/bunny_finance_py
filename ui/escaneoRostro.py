@@ -166,7 +166,7 @@ class EscanerRostro(QtWidgets.QWidget):
         index = 0
         arr = []
 
-        while index < 5:
+        while index < 10:
             cap = cv2.VideoCapture(index)
             if cap.isOpened():
                 arr.append(index)

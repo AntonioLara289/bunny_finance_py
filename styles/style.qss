@@ -25,6 +25,7 @@ QMenuBar
         stop:0.5 #a8e4ff,
         stop:1 #88c9ff
     );
+    border: 1px;
 }
 
 QMenuBar::item 
@@ -35,6 +36,7 @@ QMenuBar::item
         stop:0.5 #a8e4ff,
         stop:1 #88c9ff
     );
+    padding: 4px 10px;
 }
 
 QMenuBar::item:selected 
@@ -44,6 +46,7 @@ QMenuBar::item:selected
         stop:0 #6ac7ff,
         stop:1 #2b9fff
     );
+    border-radius: 3px;
 }
 
 QMenu
@@ -54,6 +57,12 @@ QMenu
         stop:0.5 #a8e4ff,
         stop:1 #88c9ff
     );
+
+    border: 1px
+}
+
+QMenu::item {
+    padding: 5px 25px;
 }
 
 QMenu::item:selected 

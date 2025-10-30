@@ -1,103 +1,119 @@
 import sys
 import random
 from PySide6 import QtCore, QtWidgets
-# from PySide6.QtCore import (
-#     QSize, 
-#     Qt
-# )
-from PySide6.QtGui import (
-    QAction, 
-    # QIcon,
-    # QKeySequence,
-    # QGuiApplication
-)
-# from PySide6.QtWidgets import (
-#     QApplication,
-#     QCheckBox,
-#     QLabel,
-#     QMainWindow,
-#     QStatusBar,
-#     QToolBar,
-#     QApplication,
-#     QCheckBox,
-#     QLabel,
-#     QMainWindow,
-#     QStatusBar,
-#     QToolBar,
-#     QWidgetAction,
-#     QScrollArea
-# )
-# from PySide6.QtCore import Qt
-# from database.db_manager import DBManager
+from PySide6.QtGui import QAction
 from ui.consultas import Consultas
-from ui.asistencia import Asistencia
+from ui.asistencia import AsistenciaPantalla
 from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.escaneoRostro import EscanerRostro
 from ui.Historial import Historial
-try:
-    # import cv2
-    # import face_recognition
-    import mediapipe as mp
 
+try:
+    import mediapipe as mp
     print("OpenCV importado correctamente")
     print("face_recognition importado correctamente")
     print("MediaPipe importado correctamente")
     print("MediaPipe FaceDetection inicializado correctamente")
-
 except ImportError as e:
     print("Error de importación:", e)
 except Exception as e:
     print("Otro error:", e)
 
-class MainWindow(QtWidgets.QMainWindow):
 
+class MainWindow(QtWidgets.QMainWindow):
     titulo_ventana = "Bunny Detect"
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(self.titulo_ventana) # Set the initial window title
-        self.setGeometry(100, 100, 400, 300) # (x, y, width, height)
+        self.setWindowTitle(self.titulo_ventana)
+        self.setGeometry(100, 100, 400, 300)
 
         # StackedWidget como central
         self.stack = QtWidgets.QStackedWidget()
         self.setCentralWidget(self.stack)
 
-        # self.pantallaEscaneoRostro = EscanerRostro()
+        # Pantalla inicial
         self.pantallaMostrandose = EscanerRostro()
-
-        # ******************************************************************************************************
-        #Se tiene que conectar con la función onDestroy, desde ahora, todas las clases adicionales (pantallas)
-        # deben tener la función onDestroy (aunque no tenga nada por realizar al cerrarse).
-        
-        # Verificar el objeto EscanerRostro para un ejemplo claro
-        # ******************************************************************************************************
-        self.pantallaMostrandose.destroyed.connect(self.pantallaMostrandose.onDestroy)
-
-        # Agregar pantallas
         self.stack.addWidget(self.pantallaMostrandose)
-        # Mostrar esa pantalla
         self.stack.setCurrentWidget(self.pantallaMostrandose)
 
-    def toolbar_button_clicked(self, s):
-        print("click", s)
+        # Conectar destroyed si existe onDestroy
+        if hasattr(self.pantallaMostrandose, "onDestroy"):
+            self.pantallaMostrandose.destroyed.connect(self.pantallaMostrandose.onDestroy)
 
-    def show_modal(self):
-        pass
-        # modal = QtWidgets.QDialog(self)
-        # modal.setWindowTitle("Modal Dialog")
-        # modal_layout = QtWidgets.QVBoxLayout(modal)
-        # modal_label = QtWidgets.QLabel("This is a modal dialog", alignment=QtCore.Qt.AlignCenter)
-        # close_button = QtWidgets.QPushButton("Close")
-        # close_button.clicked.connect(modal.accept)
- 
-        # modal_layout.addWidget(modal_label)
-        # modal_layout.addWidget(close_button)
+    # ANIMACIÓN ENTRE VISTAS
+    def animate_switch(self, new_widget):
+        current = self.stack.currentWidget()
+        new_widget.setGeometry(self.stack.geometry())
 
-        # modal.exec()
+        self.stack.addWidget(new_widget)
 
-    @QtCore.Slot()
+        # --- Animación deslizante ---
+        anim_slide = QtCore.QPropertyAnimation(new_widget, b"geometry")
+        anim_slide.setDuration(300)
+        anim_slide.setStartValue(self.stack.geometry().adjusted(self.width(), 0, self.width(), 0))
+        anim_slide.setEndValue(self.stack.geometry())
+        anim_slide.setEasingCurve(QtCore.QEasingCurve.OutCubic)
 
+        # --- Animación de opacidad (fade) ---
+        effect = QtWidgets.QGraphicsOpacityEffect(new_widget)
+        new_widget.setGraphicsEffect(effect)
+        anim_fade = QtCore.QPropertyAnimation(effect, b"opacity")
+        anim_fade.setDuration(300)
+        anim_fade.setStartValue(0)
+        anim_fade.setEndValue(1)
+        anim_fade.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+
+        # Iniciar ambas
+        anim_slide.start()
+        anim_fade.start()
+
+        # Mantener referencias para que no se destruyan al terminar
+        self._anim_slide = anim_slide
+        self._anim_fade = anim_fade
+
+        self.stack.setCurrentWidget(new_widget)
+
+    # FUNCIONES DE CAMBIO DE VISTAS
+    def mostrarVistaEscaneo(self):
+        self.destroyActual()
+        print("Mostrando la vista de escaneo")
+        self.pantallaMostrandose = EscanerRostro()
+        self.animate_switch(self.pantallaMostrandose)
+
+    def mostrarVistaHistorial(self):
+        self.destroyActual()
+        print("Mostrando la vista de historial")
+        self.pantallaMostrandose = Historial()
+        self.animate_switch(self.pantallaMostrandose)
+
+    def mostrarVistaConsultas(self):
+        self.destroyActual()
+        print("Mostrando vista Consultas")
+        self.pantallaMostrandose = Consultas()
+        self.animate_switch(self.pantallaMostrandose)
+
+    def mostrarVistaAsistencia(self):
+        self.destroyActual()
+        print("Mostrando vista Asistencia")
+        self.pantallaMostrandose = AsistenciaPantalla()
+        self.animate_switch(self.pantallaMostrandose)
+
+    def destroyActual(self):
+        if self.pantallaMostrandose:
+            try:
+                self.pantallaMostrandose.close()
+                self.pantallaMostrandose.deleteLater()
+            except Exception:
+                pass
+        self.pantallaMostrandose = None
+
+    def salir(self):
+        self.destroyActual()
+        QtWidgets.QApplication.quit()
+
+    # FUNCIONES DE CÁLCULO Y MODAL
     def mostrar_camara(self):
         self.cam_window = CameraWidget(self)
         modal = QtWidgets.QDialog(self)
@@ -109,7 +125,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         modal_layout.addWidget(modal_label)
         modal_layout.addWidget(close_button)
-
         modal.exec()
 
     def calculo(self):
@@ -119,127 +134,41 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def recibir_calculo(self, valor):
         print("El cálculo recibido desde cámara es:", valor)
-        # Aquí ya puedes guardarlo en una variable, mostrarlo en un QLabel, etc.
-        self.text.setText(f"Cálculo: {valor}")
 
-    def mostrarVistaHistorial(self):
-
-        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        self.destroyActual()
-
-        print("Mostrando la vista de historial")
-        # Agregar pantallas
-        self.pantallaMostrandose = Historial()
-        self.stack.addWidget(self.pantallaMostrandose)
-
-
-        # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.pantallaMostrandose)
-        3
-    def mostrarVistaConsultas(self):
-        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        self.destroyActual()
-        
-        print("Mostrando vista Consultas")
-        # Agregar pantallas
-        self.pantallaMostrandose = Consultas()
-        self.stack.addWidget(self.pantallaMostrandose)
-
-        # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.pantallaMostrandose)
-
-    def mostrarVistaAsistencia(self):
-         #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        self.pantallaMostrandose.destroy()
-            
-        print("Mostrando vista Asistencia")
-        # Agregar pantallas
-        self.asistencia = Asistencia()
-        self.stack.addWidget(self.asistencia)
-
-        # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.asistencia)
-            
-    def mostrarVistaEscaneo(self):
-
-        self.destroyActual()
-
-        print("Mostrando la vista de escaneo")
-        # Agregar pantallas
-        self.pantallaMostrandose = EscanerRostro()
-        
-        self.stack.addWidget(self.pantallaMostrandose)
-
-        # Mostrar esa pantalla
-        self.stack.setCurrentWidget(self.pantallaMostrandose)
-
-    def salir(self):
-        self.pantallaMostrandose.destroy()
-        QtWidgets.QApplication.quit()
-
-    # Botones para interfaz
+    # BOTONES DEL MENÚ
     def BotonEscaneo(window, file_menu):
-        file_menu.addSeparator()
-        button_escaneo_rostro = QAction("Registro de rostro", window)
-        button_escaneo_rostro.setStatusTip("Escaneo de rostro con cámara")
-        
-        # lo agregas al menú o toolbar
-        file_menu.addAction(button_escaneo_rostro)
-
-        # conectas la acción
-        button_escaneo_rostro.triggered.connect(lambda: window.mostrarVistaEscaneo())
-        return button_escaneo_rostro
+        action = QAction("Registro de rostro", window)
+        action.setStatusTip("Escaneo de rostro con cámara")
+        file_menu.addAction(action)
+        action.triggered.connect(lambda: window.mostrarVistaEscaneo())
+        return action
 
     def BotonRegistro(window, file_menu):
-        button_historial_registro = QAction("Historial", window)
-        button_historial_registro.setStatusTip("Historial de las detecciones")
-        
-        # lo agregas al menú o toolbar
-        file_menu.addAction(button_historial_registro)
-
-        # conectas la acción
-        button_historial_registro.triggered.connect(lambda: window.mostrarVistaHistorial())
-        return button_historial_registro
-    
-    def destroyActual(self):
-
-        #Esto hace que la camara se libere en caso de que la pantalla anterior sea la de escaneo
-        
-        self.pantallaMostrandose.close()
-        # self.stack.removeWidget(self.pantallaMostrandose)
-        self.pantallaMostrandose.deleteLater()
-        self.pantallaMostrandose = None
+        file_menu.addSeparator()
+        action = QAction("Historial", window)
+        action.setStatusTip("Historial de las detecciones")
+        file_menu.addAction(action)
+        action.triggered.connect(lambda: window.mostrarVistaHistorial())
+        return action
 
     def BotonConsultas(window, file_menu):
-        button_consulta_personas = QAction("Consultas", window)
-        button_consulta_personas.setStatusTip("Consulta del registro de personas y estatus")
-        
-        # lo agregas al menú o toolbar
-        file_menu.addAction(button_consulta_personas)
-
-        # conectas la acción
-        button_consulta_personas.triggered.connect(lambda: window.mostrarVistaConsultas())
-        return button_consulta_personas
+        action = QAction("Consultas", window)
+        action.setStatusTip("Consulta del registro de personas y estatus")
+        file_menu.addAction(action)
+        action.triggered.connect(lambda: window.mostrarVistaConsultas())
+        return action
 
     def BotonAsistencia(window, file_menu):
-        butoon_asistencia = QAction("Asistencia", window)
-        butoon_asistencia.setStatusTip("Pantalla de toma e asistencia")
-        
-        # lo agregas al menú o toolbar
-        file_menu.addAction(butoon_asistencia)
-
-        # conectas la acción
-        butoon_asistencia.triggered.connect(lambda: window.mostrarVistaAsistencia())
-        return butoon_asistencia
+        action = QAction("Asistencia", window)
+        action.setStatusTip("Pantalla de toma de asistencia")
+        file_menu.addAction(action)
+        action.triggered.connect(lambda: window.mostrarVistaAsistencia())
+        return action
 
     def BotonSalir(window, file_menu):
         file_menu.addSeparator()
-        button_salir = QAction("Salir", window)
-        button_salir.setStatusTip("Salir de aplicacion")
-        
-        # lo agregas al menú o toolbar
-        file_menu.addAction(button_salir)
-
-        # conectas la acción
-        button_salir.triggered.connect(lambda: window.salir())
-        return button_salir
+        action = QAction("Salir", window)
+        action.setStatusTip("Salir de aplicación")
+        file_menu.addAction(action)
+        action.triggered.connect(lambda: window.salir())
+        return action
