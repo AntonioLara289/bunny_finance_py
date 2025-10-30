@@ -29,7 +29,7 @@ def load_stylesheet(app, filename):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    load_stylesheet(app, "styles/style.qss")
+    load_stylesheet(app, "styles/aerofrost.qss")
 
     window = MainWindow()
     
