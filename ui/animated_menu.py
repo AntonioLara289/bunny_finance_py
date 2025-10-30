@@ -18,3 +18,18 @@ class AnimatedMenu(QMenu):
         self._anim.start()
 
         super().showEvent(event)
+
+def animate_switch(self, new_widget):
+    current = self.stack.currentWidget()
+    new_widget.setGeometry(self.stack.geometry())
+
+    self.stack.addWidget(new_widget)
+    anim = QPropertyAnimation(new_widget, b"geometry")
+    anim.setDuration(250)
+    anim.setStartValue(self.stack.geometry().adjusted(self.width(), 0, self.width(), 0))
+    anim.setEndValue(self.stack.geometry())
+    anim.setEasingCurve(QEasingCurve.OutCubic)
+    self._anim = anim
+    anim.start()
+
+    self.stack.setCurrentWidget(new_widget)
