@@ -14,14 +14,14 @@ import json
 
 class NombrarFotoCapturada(QDialog):
 
-    def __init__(self, parent = None, data = None, imagen = None, encodigns = None):
+    def __init__(self, parent = None, data = None, imagenes = None, encodigns = None):
 ##
         super(NombrarFotoCapturada, self).__init__(parent)
 
         self.setWindowTitle("Nombre la foto capturada")
 
         self.data = data
-        self.imagen = imagen
+        self.imagenes = imagenes
         self.encodings = encodigns
         
         self.dbManager = DBManager()
@@ -128,9 +128,9 @@ class NombrarFotoCapturada(QDialog):
             if len(self.encodings) == 0:
                 raise ValueError("No se detectó ninguna cara en la imagen")
 
-            encoding_array = self.encodings        # Esto sí es NumPy array
-            encoding_list = encoding_array.tolist()   # Ahora sí puedes convertir a lista
-            encoding_json = json.dumps(encoding_list)
+            # encoding_array = self.encodings        # Esto sí es NumPy array
+            # encoding_list = encoding_array.tolist()   # Ahora sí puedes convertir a lista
+            encoding_json = json.dumps(self.encodings)
 
             self.dbManager.guardarPersonaData(self.nombre_imagen.text(), self.nombre_imagen.text() + '.png', encoding_json)
 
@@ -138,7 +138,15 @@ class NombrarFotoCapturada(QDialog):
             #print('output_path: ', output_path)
 
             # Save the image to the specified custom directory
-            cv2.imwrite(output_path, self.imagen)
+
+            for imagen in self.imagenes:
+
+                try:
+                    cv2.imwrite(output_path, imagen)
+                    
+                except TypeError:
+                    print("Error al guardar:", TypeError)
+                
 
             self.accept()
 
