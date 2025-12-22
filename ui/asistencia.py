@@ -9,6 +9,7 @@ from openpyxl.utils import get_column_letter
 from ui.camaraReconocimientoWidget import CameraRecognitionWidget
 from database.db_manager import DBManager
 import json
+from log import log
 
 asistencias_status = {1: "Asistió", 0: "No asistió"}
 
@@ -80,7 +81,9 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         # Botón Exportar
         export_btn = QPushButton("Exportar a Excel")
         export_btn.setMinimumHeight(40)
-        export_btn.clicked.connect(self.exportarExcel)
+        export_btn.clicked.connect(
+            lambda: (self.exportarExcel(), log.push("Lista exportada"))
+        )
 
         main_layout.addWidget(export_btn, alignment=QtCore.Qt.AlignRight)
 

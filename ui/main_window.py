@@ -33,10 +33,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(self.titulo_ventana)
         self.setGeometry(100, 100, 800, 600)
 
-        # Status bar
+        # Barra de estatus
         self.setStatusBar(QStatusBar(self))
 
-        # StackedWidget como central
+        # Centrar el StackedWidget
         self.stack = QtWidgets.QStackedWidget()
         self.setCentralWidget(self.stack)
 
@@ -51,9 +51,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Menús
         self._crear_menus()
 
-    # =============================
     # MENÚS
-    # =============================
     def _crear_menus(self) -> None:
         menu_bar = self.menuBar()
 

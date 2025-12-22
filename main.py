@@ -3,12 +3,10 @@ import sys
 import os
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
-
 from ui.main_window import MainWindow
 
-
 def load_stylesheet(app: QApplication, filename: str) -> None:
-    """Carga un archivo .qss y lo aplica a la aplicación."""
+    """Carga un archivo .qss y aplicar el estilo """
     import traceback
 
     try:

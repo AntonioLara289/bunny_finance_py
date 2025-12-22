@@ -17,13 +17,13 @@ class UMAPViewer(QtWidgets.QWidget):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
 
-        # ===== Title =====
+        # Titulo
         title = QLabel("Visualización UMAP de Personas")
         title.setObjectName("TitleLabel")
         title.setAlignment(QtCore.Qt.AlignCenter)
         main_layout.addWidget(title)
 
-        # ===== Search section =====
+        # Seccion de busqueda
         search_frame = QFrame()
         search_frame.setObjectName("SectionFrame")
         search_layout = QHBoxLayout(search_frame)
@@ -39,16 +39,16 @@ class UMAPViewer(QtWidgets.QWidget):
 
         main_layout.addWidget(search_frame)
 
-        # ===== Matplotlib canvas =====
+        # Matplotlib canvas
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         main_layout.addWidget(self.canvas)
 
-        # ===== Database =====
+        # Base de datos
         self.dbManager = DBManager()
         self.load_persons()
 
-        # ===== Connect selection =====
+        # Conectar seleccion
         self.person_combo.currentIndexChanged.connect(self.plot_umap)
 
     def load_persons(self):
