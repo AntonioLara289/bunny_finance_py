@@ -10,5 +10,3 @@ class Calculo(QObject):
     def enviarCalculo(self):
         calculo = random.randint(1, 100) * random.randint(1, 100)
         self.signalCalculo.emit(calculo)
-
-
