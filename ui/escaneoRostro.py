@@ -111,7 +111,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.timer_update.start(30)
         
         self.mp_face_detection = mp.solutions.face_detection
-        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5)
+        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.8)
         # self.mp_face_mesh = mp.solutions.face_mesh
         # self.face_mesh = self.mp_face_mesh.FaceMesh(
         #     static_image_mode=False,
@@ -520,11 +520,11 @@ class EscanerRostro(QtWidgets.QWidget):
             # self.modal.show()
             self.resultado = self.modal.exec()
             
-
             if self.resultado == QDialog.Accepted:
-                self.fotografias = []
+                # self.fotografias = []
 
-                for item in self.cantidad_fotos:
+                for item in range(self.cantidad_fotos):
+                    print('item: ', item)
                     self.borrarFoto(item)
                     
                 print("Aceptada")

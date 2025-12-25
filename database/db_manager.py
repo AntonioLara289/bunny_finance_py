@@ -35,7 +35,7 @@ class DBManager:
         self.crearTablaPersonas()
 
         # Ahora sí, seleccionamos datos
-        self.cursor.execute("SELECT * FROM personas")
+        self.cursor.execute("SELECT * FROM personas where estatus = 1")
 
         filas = self.cursor.fetchall()
 
@@ -73,7 +73,7 @@ class DBManager:
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
 
-        self.cursor.execute("SELECT * FROM personas")
+        self.cursor.execute("SELECT * FROM personas where estatus = 1")
         filas = self.cursor.fetchall()
 
         self.conn.commit()
