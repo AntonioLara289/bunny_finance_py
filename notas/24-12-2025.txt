@@ -1,0 +1,6 @@
+# Notas para cuando programes esto
+
+-> visualizacionEncodings.py nececita que los encodings sean partidos del string, cada encoding
+	es un string largo pero estos son de 128 dimensiones y nececitas una estructura
+	con la lista de cada una de las dimensiones de encoding.
+	esto deberia pasar en db_manager.getEncodings() una funcion nueva que hice.

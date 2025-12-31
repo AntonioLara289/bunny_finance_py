@@ -444,10 +444,10 @@ class EscanerRostro(QtWidgets.QWidget):
             # Ids
             self.ids_personas_db.append(persona[0])
 
-            print(f"{json.loads(persona[3])}")
+            #print(f"{json.loads(persona[3])}")
 
-        print('self.encodings_db: ', type(self.encodings_db))
-        print('self.getPersonas: ', self.getPersonas)
+        #print('self.encodings_db: ', type(self.encodings_db))
+        #print('self.getPersonas: ', self.getPersonas)
 
     def onDestroy(self, event):
         print("Cerrando escaneo de rostro")

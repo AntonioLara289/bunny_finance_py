@@ -92,7 +92,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Visualización Encodings
         self._add_action(
             menu,
-            text="Visualización Encodings",
+            text="Encodings",
             tip="UMAP Encodings",
             slot=self.mostrarVistaVisualizarEncodings,
         )
@@ -162,9 +162,7 @@ class MainWindow(QtWidgets.QMainWindow):
         menu.addAction(action)
         return action
 
-    # =============================
     # ANIMACIÓN ENTRE VISTAS
-    # =============================
     def animate_switch(self, new_widget: QtWidgets.QWidget) -> None:
         current = self.stack.currentWidget()
         new_widget.setGeometry(self.stack.geometry())
@@ -198,9 +196,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.stack.setCurrentWidget(new_widget)
 
-    # =============================
     # CAMBIO DE VISTAS
-    # =============================
     def destroyActual(self) -> None:
         if getattr(self, "pantallaMostrandose", None):
             try:
@@ -235,9 +231,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print("Mostrando vista Asistencia")
         self._cambiar_vista(AsistenciaPantalla)
 
-    # =============================
     # OTROS
-    # =============================
     def salir(self) -> None:
         self.destroyActual()
         QtWidgets.QApplication.quit()

@@ -5,11 +5,9 @@ from PySide6.QtWidgets import (
 )
 from database.db_manager import DBManager
 
-
 class Consultas(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-
         # ===== Base layout =====
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
@@ -82,17 +80,17 @@ class Consultas(QtWidgets.QWidget):
         table_layout.addWidget(self.table)
         main_layout.addWidget(table_frame)
 
-        # ===== Connect search =====
+        # Conectar busqueda
         self.search_box.textChanged.connect(self.filter_table)
 
-    # ===== Table filter =====
+    # Filtrado para la tabla
     def filter_table(self, text):
         for row in range(self.table.rowCount()):
             item = self.table.item(row, 1)  # Nombre
             if item:
                 self.table.setRowHidden(row, text.lower() not in item.text().lower())
 
-    # ===== Update status =====
+    # Actualizar estatus
     def update_status(self, person_id, new_status):
         print(f"Actualizando ID {person_id} a {new_status}")
         self.dbManager.update_status(person_id, new_status)

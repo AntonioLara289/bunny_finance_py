@@ -7,30 +7,6 @@ class DBManager:
 
     db_path = None
 
-    def getEndingsPersona(self, person_id):
-        """
-        Returns a list of numpy arrays of embeddings for a given person.
-        Assumes the 'encodes' column stores a list-like string for each image.
-        """
-        self.conn = sqlite3.connect(self.db_path)
-        cursor = self.conn.cursor()
-        
-        cursor.execute("SELECT encodes FROM personas WHERE id_persona = ?", (person_id,))
-        rows = cursor.fetchall()
-        self.conn.close()
-        
-        encodings_list = []
-        for row in rows:
-            enc_str = row[0]  # encodes stored as string
-            try:
-                # Convert string representation of list to actual Python list
-                enc_array = np.array(ast.literal_eval(enc_str), dtype=np.float32)
-                encodings_list.append(enc_array)
-            except Exception as e:
-                print(f"Error parsing encoding for person {person_id}: {e}")
-        
-        return encodings_list
-
     def __init__(self, db_path="database/bunny_detect.db"):
         self.conn = sqlite3.connect(db_path)
         self.db_path = db_path
@@ -39,19 +15,23 @@ class DBManager:
         self.crearTablaPersonas()
 
     def getColumns(self):
-        collums = 0
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
+        self.cursor.execute("PRAGMA table_info(personas)")
+        columns = len(self.cursor.fetchall())
+        self.cursor.close()
+        self.conn.close()
+        return columns
 
-        return collums
     def getRows(self):
-        rows = 0
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
-        rows = self.cursor.execute("SELECT COUNT(*) FROM personas")
+        self.cursor.execute("SELECT COUNT(*) FROM personas")
         rows = self.cursor.fetchone()[0]
+        self.cursor.close()
+        self.conn.close()
         return rows
-        self.crearTablaHistorial()
+        #self.crearTablaHistorial()
         
     def getPersonasData(self):
         
@@ -105,6 +85,23 @@ class DBManager:
         self.conn.commit()
         self.conn.close()
 
+        return filas
+
+    def getEncodings(self):
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("SELECT encodes FROM personas")
+        rows = self.cursor.fetchall()
+
+        self.conn.close()
+
+        # Build the list manually
+        filas = []
+        for row in rows:
+            # Convert string to actual list
+            encoding = ast.literal_eval(row[0])
+            filas.append(encoding)
         return filas
 
     def crearTablaHistorial(self):
