@@ -12,6 +12,7 @@ from ui.visualizacionEncodings import UMAPViewer
 from ui.escaneoRostro import EscanerRostro
 from ui.Historial import Historial
 from ui.animated_menu import AnimatedMenu
+from ui.acerca import Acerca
 
 try:
     import mediapipe as mp
@@ -61,14 +62,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self._crear_menu_opciones(opciones_menu)
 
         # ---- Menú Estilos ----
-        estilos_menu = QMenu("Estilos", self)  # para probar sin AnimatedMenu
+        #estilos_menu = QMenu("Estilos", self)  # para probar sin AnimatedMenu
+        estilos_menu = AnimatedMenu("Estilos", self)
         menu_bar.addMenu(estilos_menu)
         self._crear_menu_estilos(estilos_menu)
 
         # ---- Menú Acerca ----
         acerca_menu = AnimatedMenu("Acerca", self)
         menu_bar.addMenu(acerca_menu)
-        # Aquí podrías agregar un QAction "Acerca de..." que abra un QDialog
+        self._crear_menu_data(acerca_menu)
 
     def _crear_menu_opciones(self, menu) -> None:
         # Registro de rostro
@@ -141,6 +143,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 tip=tip,
                 slot=lambda p=path: self._cambiar_estilo(p),
             )
+
+    def _crear_menu_data(self, menu) -> None:
+        # Pantalla acerca
+        self._add_action(
+            menu,
+            text="Acerca",
+            tip="Informacion del programa y licencias",
+            slot=self.mostrarVistaAcerca,
+        )
 
     def _cambiar_estilo(self, path: str) -> None:
         import traceback
@@ -230,6 +241,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def mostrarVistaAsistencia(self) -> None:
         print("Mostrando vista Asistencia")
         self._cambiar_vista(AsistenciaPantalla)
+
+    def mostrarVistaAcerca(self) -> None:
+        print("Mostrando vista acerca")
+        self._cambiar_vista(Acerca)
 
     # OTROS
     def salir(self) -> None:
