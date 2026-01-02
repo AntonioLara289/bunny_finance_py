@@ -1,4 +1,3 @@
-# main_window.py
 import random  # si no lo usas, elimínalo
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QAction

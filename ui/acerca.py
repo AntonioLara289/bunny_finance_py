@@ -53,8 +53,3 @@ class Acerca(QtWidgets.QDialog):
         text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         container_layout.addWidget(text)
         container_layout.addStretch()
-
-        # Close button
-        btn = QtWidgets.QPushButton("Cerrar")
-        btn.clicked.connect(self.accept)
-        layout.addWidget(btn)
