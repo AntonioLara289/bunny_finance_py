@@ -48,7 +48,7 @@ class DBManager:
         self.conn.commit()
 
         return filas
-    
+        
     def crearTablaPersonas(self):
 
         self.conn = sqlite3.connect(self.db_path)
