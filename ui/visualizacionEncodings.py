@@ -16,22 +16,22 @@ class UMAPViewer(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
-        # ---------------- Window ----------------
+        # Ajustes iniciales de ventana
         self.setWindowTitle("UMAP Viewer")
         self.resize(900, 700)
 
-        # ---------------- Layout ----------------
+        # Layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(12)
 
-        # ---------------- Title ----------------
+        # Titulo
         title = QLabel("Visualización UMAP de Personas")
         title.setAlignment(QtCore.Qt.AlignCenter)
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
         main_layout.addWidget(title)
 
-        # ---------------- Description ----------------
+        # Descripccion de pantalla
         text = QLabel(
             "Esta ventana muestra una proyección bidimensional de los encodings faciales "
             "almacenados en el sistema utilizando el algoritmo UMAP (Uniform Manifold "
@@ -50,36 +50,34 @@ class UMAPViewer(QtWidgets.QWidget):
         text.setMaximumHeight(120)
         main_layout.addWidget(text)
 
-        # ---------------- Hover Toggle ----------------
+        # Checkbox para muestra de nombres
         self.hover_checkbox = QCheckBox("Mostrar nombre al pasar el cursor")
         self.hover_checkbox.setChecked(True)
         main_layout.addWidget(self.hover_checkbox)
 
-        # ---------------- Matplotlib Canvas ----------------
+        # Canvas de Matplotlib
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         main_layout.addWidget(self.canvas, stretch=1)
 
-        # ---------------- Data ----------------
+        # Base de datos y datos para muestreo
         self.dbManager = DBManager()
         self.encodings = []
         self.names = []
         self.embedding = None
         self.scatter = None
         self.annotation = None
-
         self._umap_drawn = False
-
         self.cargar_personas()
 
-    # ---------------- Show Event ----------------
+    # Mostrar
     def showEvent(self, event):
         super().showEvent(event)
         if not self._umap_drawn:
             self._umap_drawn = True
             QtCore.QTimer.singleShot(0, self.plot_umap)
 
-    # ---------------- Load Data ----------------
+    # Carga de informacion
     def cargar_personas(self):
         rows = self.dbManager.getPersonas()
 
@@ -102,7 +100,7 @@ class UMAPViewer(QtWidgets.QWidget):
 
         print("Personas cargadas:", len(self.encodings))
 
-    # ---------------- Plot UMAP ----------------
+    # Canvas con datos
     def plot_umap(self):
         if len(self.encodings) < 2:
             self._draw_error("No hay suficientes datos para UMAP")
@@ -137,7 +135,7 @@ class UMAPViewer(QtWidgets.QWidget):
         ax.set_xlabel("UMAP-1")
         ax.set_ylabel("UMAP-2")
 
-        # ---------------- Hover Annotation ----------------
+        # Anotaciones con nombres
         self.annotation = ax.annotate(
             "",
             xy=(0, 0),
@@ -148,13 +146,13 @@ class UMAPViewer(QtWidgets.QWidget):
         )
         self.annotation.set_visible(False)
 
-        # Connect hover event
+        # Conectar con el "hover" de mouse
         self.canvas.mpl_connect("motion_notify_event", self._on_hover)
 
         self.figure.tight_layout()
         self.canvas.draw()
 
-    # ---------------- Hover Logic ----------------
+    # Logica de "hover" de mouse
     def _on_hover(self, event):
         if not self.hover_checkbox.isChecked():
             self.annotation.set_visible(False)
@@ -187,7 +185,7 @@ class UMAPViewer(QtWidgets.QWidget):
 
         self.canvas.draw_idle()
 
-    # ---------------- Error Screen ----------------
+    # Pantalla de error
     def _draw_error(self, msg):
         self.figure.clear()
         ax = self.figure.add_subplot(111)
