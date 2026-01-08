@@ -1,4 +1,3 @@
-# UMAP.py
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QCheckBox
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -8,9 +7,7 @@ import numpy as np
 import ast
 import matplotlib.cm as cm
 import math
-
 from database.db_manager import DBManager
-
 
 class UMAPViewer(QtWidgets.QWidget):
     def __init__(self):
