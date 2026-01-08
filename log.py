@@ -1,6 +1,6 @@
 # Clase de historial, los contenidos se muestran en historial
 # Esta es una clase estatica, no nececitas crear una instancia de ella para utilizarla
-# 	similar a un namespace en C++, solo usala como si ya existiera un objeto de esta.
+# 	similar a un namespace en C++, solo debe ser usada como si ya existiera un objeto de esta.
 
 from collections import deque
 from datetime import datetime

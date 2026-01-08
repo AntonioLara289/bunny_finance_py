@@ -10,6 +10,7 @@ from ui.calculo import Calculo
 from ui.visualizacionEncodings import UMAPViewer
 from ui.escaneoRostro import EscanerRostro
 from ui.Historial import Historial
+from ui.sesiones import Sesiones
 from ui.animated_menu import AnimatedMenu
 from ui.acerca import Acerca
 
@@ -82,7 +83,33 @@ class MainWindow(QtWidgets.QMainWindow):
 
         menu.addSeparator()
 
-        # Historial
+        # Asistencia
+        self._add_action(
+            menu,
+            text="Asistencia",
+            tip="Pantalla de toma de asistencia",
+            slot=self.mostrarVistaAsistencia,
+        )
+
+        # Sesiones
+        self._add_action(
+            menu,
+            text="Sesiones",
+            tip="Pantalla de asignacion de sesiones",
+            slot=self.mostrarVistaSesiones,
+        )
+
+        # Consultas
+        self._add_action(
+            menu,
+            text="Consultas",
+            tip="Consulta del registro de personas y estatus",
+            slot=self.mostrarVistaConsultas,
+        )
+
+        menu.addSeparator()
+
+        # Historial SesionesPantalla
         self._add_action(
             menu,
             text="Historial",
@@ -96,22 +123,6 @@ class MainWindow(QtWidgets.QMainWindow):
             text="Encodings",
             tip="UMAP Encodings",
             slot=self.mostrarVistaVisualizarEncodings,
-        )
-
-        # Consultas
-        self._add_action(
-            menu,
-            text="Consultas",
-            tip="Consulta del registro de personas y estatus",
-            slot=self.mostrarVistaConsultas,
-        )
-
-        # Asistencia
-        self._add_action(
-            menu,
-            text="Asistencia",
-            tip="Pantalla de toma de asistencia",
-            slot=self.mostrarVistaAsistencia,
         )
 
         menu.addSeparator()
@@ -236,6 +247,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def mostrarVistaConsultas(self) -> None:
         print("Mostrando vista Consultas")
         self._cambiar_vista(Consultas)
+
+    def mostrarVistaSesiones(self) -> None:
+        print("Mostrando la vista de historial")
+        self._cambiar_vista(Sesiones)
 
     def mostrarVistaAsistencia(self) -> None:
         print("Mostrando vista Asistencia")
