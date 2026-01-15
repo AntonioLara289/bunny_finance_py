@@ -27,7 +27,8 @@ import numpy as np
 import math
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
-from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
+# from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
+from ui.workers.camaraWorker import CameraWorker, FaceRecognitionWorker
 
 
 class EscanerRostro(QtWidgets.QWidget):
@@ -106,9 +107,9 @@ class EscanerRostro(QtWidgets.QWidget):
         # self.pantalla = QGuiApplication.primaryScreen()
         # self.medidas_pantalla = self.pantalla.size()
 
-        self.timer_update = QTimer()
-        self.timer_update.timeout.connect(self.update)
-        self.timer_update.start(30)
+        # self.timer_update = QTimer()
+        # self.timer_update.timeout.connect(self.update)
+        # self.timer_update.start(30)
         
         self.mp_face_detection = mp.solutions.face_detection
         self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.8)
@@ -173,44 +174,124 @@ class EscanerRostro(QtWidgets.QWidget):
         return boton_cerrar_camara
     
     def cerrarCamara(self):
-        self.cap.release()
+        
+        # 1. Indicar a los Workers que detengan su bucle interno
+        if hasattr(self, 'cam_worker'):
+            self.cam_worker.stop() 
+        
+        # 2. Esperar a que los hilos terminen de forma segura
+        if hasattr(self, 'cam_thread'):
+            self.cam_thread.quit()
+            self.cam_thread.wait() # Espera a que termine
+
+        if hasattr(self, 'face_thread'):
+            self.face_thread.quit()
+            self.face_thread.wait() # Espera a que termine
+            
+        # 3. Liberar la captura de OpenCV
+        if hasattr(self, 'cap') and self.cap.isOpened():
+            self.cap.release()
+            
+        # 4. Actualizar UI
         self.boton_abrir_camara.show()
         self.boton_cerrar_camara.hide()
         self.cam_live.hide()
         self.boton_guardar_foto.hide()
 
+    def onDestroy(self, event):
+        # Asegurarse de llamar a cerrarCamara para limpiar los hilos al cambiar de pantalla
+        self.cerrarCamara()
+        print("Cerrando escaneo de rostro")
+        event.accept()
+    # def cerrarCamara(self):
+    #     self.cap.release()
+    #     self.boton_abrir_camara.show()
+    #     self.boton_cerrar_camara.hide()
+    #     self.cam_live.hide()
+    #     self.boton_guardar_foto.hide()
+
+
     def abrirCamara(self):
         self.boton_abrir_camara.hide()
         self.boton_guardar_foto.show()
         self.cam_live.show()
-        # self.layout.removeWidget(self.boton_abrir_camara)
-        # self.layout.addWidget(self.boton_cerrar_camara)
         self.boton_cerrar_camara.show()
-        self.cargarDatosPersonas()
+        self.cargarDatosPersonas() # Carga datos de la DB
 
+        # --- INICIO DE HILOS ---
+        
+        # 1. Inicializar Captura de Cámara (sigue en el hilo principal)
         # Iniciar cámara
-        index = 0
-        arr = []
+        self.cap = cv2.VideoCapture(0)
+        
+        # Establecer una resolución más baja para mayor velocidad
+        # (Puedes probar con 640x480 o 960x540)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        
+        # Establecer FPS (opcional, algunas cámaras lo ignoran)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        
+        # 2. Worker para la cámara (Lectura de frames)
+        self.cam_thread = QThread()
+        self.cam_worker = CameraWorker(self.cap) 
+        self.cam_worker.moveToThread(self.cam_thread)
+        
+        # 3. Worker para el Reconocimiento Facial (Detección e Identificación)
+        self.face_worker = FaceRecognitionWorker(
+            self.encodings_db, 
+            self.nombres_personas_db, 
+            self.ids_personas_db
+        )
+        self.face_thread = QThread()
+        self.face_worker.moveToThread(self.face_thread)
 
-        while index < 5:
-            cap = cv2.VideoCapture(index)
-            if cap.isOpened():
-                arr.append(index)
+        # Conexiones: Flujo de datos: Camera -> FaceRecog -> UI
+        
+        # CameraWorker emite el frame de video al FaceRecognitionWorker (slot)
+        self.cam_worker.frame_ready.connect(self.face_worker.process_frame)
+        
+        # FaceRecognitionWorker emite el frame procesado (con rectángulos y nombres) a la UI (slot)
+        self.face_worker.frame_processed.connect(self.update_image) 
+        
+        # Inicio de hilos (llama al método run() de los workers)
+        self.cam_thread.started.connect(self.cam_worker.run)
+        self.face_thread.start()
+        self.cam_thread.start() # El orden importa, FaceRecog debe estar esperando antes de que Camera empiece a emitir frames.
+            
+        # --- FIN DE HILOS ---
+
+    # def abrirCamara(self):
+    #     self.boton_abrir_camara.hide()
+    #     self.boton_guardar_foto.show()
+    #     self.cam_live.show()
+    #     # self.layout.removeWidget(self.boton_abrir_camara)
+    #     # self.layout.addWidget(self.boton_cerrar_camara)
+    #     self.boton_cerrar_camara.show()
+    #     self.cargarDatosPersonas()
+        # # Iniciar cámara
+        # index = 0
+        # arr = []
+
+        # while index < 5:
+        #     cap = cv2.VideoCapture(index)
+        #     if cap.isOpened():
+        #         arr.append(index)
                 
-            else:
-                pass
+        #     else:
+        #         pass
 
-            cap.release()
-            index += 1    
+        #     cap.release()
+        #     index += 1    
             
 
-        self.cap = cv2.VideoCapture(0)
-        print('Lista de camaras: ', arr)
+        # self.cap = cv2.VideoCapture(0)
+        # print('Lista de camaras: ', arr)
 
-        # Timer que lee frames cada 30 ms
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.leerDatosCamara)
-        self.timer.start(0)
+        # # Timer que lee frames cada 30 ms
+        # self.timer = QTimer()
+        # self.timer.timeout.connect(self.leerDatosCamara)
+        # self.timer.start(0)
         
         # FaceRecognition
         # self.face_worker = FaceRecognitionWorker(self.encodings_db, self.nombres_db)
@@ -265,180 +346,180 @@ class EscanerRostro(QtWidgets.QWidget):
         # # out.release()
         # cv2.destroyAllWindows()
 
-    def leerDatosCamara(self):
+    # def leerDatosCamara(self):
 
-        # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 280)
-        # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 340)
+    #     # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 280)
+    #     # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 340)
 
-        ret, frame = self.cap.read()
+    #     ret, frame = self.cap.read()
 
-        self.frame_camera = frame
+    #     self.frame_camera = frame
 
-        if not ret:
-            return
+    #     if not ret:
+    #         return
 
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # results = None
-        results = self.face_detection.process(rgb_frame)
+    #     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #     # results = None
+    #     results = self.face_detection.process(rgb_frame)
 
-        # results_mesh = self.face_mesh.process(rgb_frame)
+    #     # results_mesh = self.face_mesh.process(rgb_frame)
 
-        # landmarks = []
+    #     # landmarks = []
 
-        # if results_mesh.multi_face_landmarks:
-        #     face_landmarks = results_mesh.multi_face_landmarks[0]
+    #     # if results_mesh.multi_face_landmarks:
+    #     #     face_landmarks = results_mesh.multi_face_landmarks[0]
 
-        #     h, w, _ = rgb_frame.shape
-        #     landmarks = [
-        #         (int(lm.x * w), int(lm.y * h), lm.z)
-        #         for lm in face_landmarks.landmark
-        #     ]
+    #     #     h, w, _ = rgb_frame.shape
+    #     #     landmarks = [
+    #     #         (int(lm.x * w), int(lm.y * h), lm.z)
+    #     #         for lm in face_landmarks.landmark
+    #     #     ]
 
-        #     if landmarks:
-        #         yaw = self.obtener_yaw(landmarks)
-        #         pitch = self.obtener_pitch(landmarks)
-        #         roll = self.obtener_roll(landmarks)
-        #         self.evaluar_giro(yaw=yaw)
-        #         print(f"Yaw: {yaw:.2f}º | Pitch: {pitch:.2f}º | Roll: {roll:.2f}º")
+    #     #     if landmarks:
+    #     #         yaw = self.obtener_yaw(landmarks)
+    #     #         pitch = self.obtener_pitch(landmarks)
+    #     #         roll = self.obtener_roll(landmarks)
+    #     #         self.evaluar_giro(yaw=yaw)
+    #     #         print(f"Yaw: {yaw:.2f}º | Pitch: {pitch:.2f}º | Roll: {roll:.2f}º")
 
 
 
-        if results.detections is  not None:
-            h, w, _ = rgb_frame.shape
+    #     if results.detections is  not None:
+    #         h, w, _ = rgb_frame.shape
 
-            for detection in results.detections:
+    #         for detection in results.detections:
 
-                # Dibujar la detección
-                # self.mp_drawing.draw_detection(rgb_frame, detection)
+    #             # Dibujar la detección
+    #             # self.mp_drawing.draw_detection(rgb_frame, detection)
 
-                # Bounding box relativa
-                bbox = detection.location_data.relative_bounding_box
-                x = int(bbox.xmin * w)
-                y = int(bbox.ymin * h)
-                width = int(bbox.width * w)
-                height = int(bbox.height * h)
+    #             # Bounding box relativa
+    #             bbox = detection.location_data.relative_bounding_box
+    #             x = int(bbox.xmin * w)
+    #             y = int(bbox.ymin * h)
+    #             width = int(bbox.width * w)
+    #             height = int(bbox.height * h)
 
-                # Asegurar límites válidos
-                x = max(0, x)
-                y = max(0, y)
-                x2 = min(w, x + width)
-                y2 = min(h, y + height)
+    #             # Asegurar límites válidos
+    #             x = max(0, x)
+    #             y = max(0, y)
+    #             x2 = min(w, x + width)
+    #             y2 = min(h, y + height)
 
-                # Evitar recortes inválidos
-                if x2 <= x or y2 <= y:
-                    continue
+    #             # Evitar recortes inválidos
+    #             if x2 <= x or y2 <= y:
+    #                 continue
 
-                # Recortar rostro
-                face_crop = rgb_frame[y:y2, x:x2]
+    #             # Recortar rostro
+    #             face_crop = rgb_frame[y:y2, x:x2]
 
-                # Algunos modelos requieren al menos 1 canal, tamaño mínimo, etc.
-                if face_crop.size == 0:
-                    continue
-
-                
-                face_locations = face_recognition.face_locations(rgb_frame, model="hog")
-                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-                self.face_mesh = mp.solutions.face_mesh.FaceMesh()
-
-                # Código pendiente por comprender, esto salvo la detección multiple con identificación
-                for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
-
-                    # resultados = []
-                    resultados = face_recognition.compare_faces(self.encodings_db, encoding)
-
-                    self.encoding_foto_capturada = encoding
-
-                    if True in resultados:
-
-                        index = resultados.index(True)
-
-                        nombre = self.nombres_personas_db[index]
-
-                        color = (0, 255, 0)
-
-                        id = self.ids_personas_db[index]
-
-                        nombre += ", ID: " + str(id)
-
-                        # self.boton_guardar_foto.setEnabled(False)
-
-                        if id in self.ids_personas_db:
-                            pass
-                        else:
-                            self.ids_personas_indetificadas.appen(self.ids_personas_db[index])
-
-                    else:
-                        nombre = "Desconocido"
-                        color = (0, 0, 255)
-                        self.boton_guardar_foto.setEnabled(True)
-
-                    # Dibujar rectángulo + nombre
-                    cv2.rectangle(rgb_frame, (left, top), (right, bottom), color, 2)
-                    cv2.putText(rgb_frame, nombre, (left, top - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2, cv2.LINE_AA)
+    #             # Algunos modelos requieren al menos 1 canal, tamaño mínimo, etc.
+    #             if face_crop.size == 0:
+    #                 continue
 
                 
-                # Ahora usar face_recognition para obtener los encodings
-                # face_locations = face_recognition.face_locations(rgb_frame)
-                # face_encodings = face_recognition.face_encodings(frame, face_locations)
-                # print('face_encodings: ', face_encodings)
+    #             face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+    #             face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+    #             self.face_mesh = mp.solutions.face_mesh.FaceMesh()
 
-                # self.encoding_foto_capturada = face_encodings
+    #             # Código pendiente por comprender, esto salvo la detección multiple con identificación
+    #             for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
 
-                # if face_encodings:
+    #                 # resultados = []
+    #                 resultados = face_recognition.compare_faces(self.encodings_db, encoding)
 
-                #     for encoding in face_encodings:
-                #         # print("Encoding obtenido:", encoding)
-                #         resultados = face_recognition.compare_faces(self.encodings_db, encoding)
-                #         # distancia = face_recognition.face_distance(self.known_encodings, encoding)
-                #         # print(f'Validación de comparación de datos biometricos', resultados)
+    #                 self.encoding_foto_capturada = encoding
 
-                #         if True in resultados:
+    #                 if True in resultados:
+
+    #                     index = resultados.index(True)
+
+    #                     nombre = self.nombres_personas_db[index]
+
+    #                     color = (0, 255, 0)
+
+    #                     id = self.ids_personas_db[index]
+
+    #                     nombre += ", ID: " + str(id)
+
+    #                     # self.boton_guardar_foto.setEnabled(False)
+
+    #                     if id in self.ids_personas_db:
+    #                         pass
+    #                     else:
+    #                         self.ids_personas_indetificadas.appen(self.ids_personas_db[index])
+
+    #                 else:
+    #                     nombre = "Desconocido"
+    #                     color = (0, 0, 255)
+    #                     self.boton_guardar_foto.setEnabled(True)
+
+    #                 # Dibujar rectángulo + nombre
+    #                 cv2.rectangle(rgb_frame, (left, top), (right, bottom), color, 2)
+    #                 cv2.putText(rgb_frame, nombre, (left, top - 10),
+    #                             cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2, cv2.LINE_AA)
+
+                
+    #             # Ahora usar face_recognition para obtener los encodings
+    #             # face_locations = face_recognition.face_locations(rgb_frame)
+    #             # face_encodings = face_recognition.face_encodings(frame, face_locations)
+    #             # print('face_encodings: ', face_encodings)
+
+    #             # self.encoding_foto_capturada = face_encodings
+
+    #             # if face_encodings:
+
+    #             #     for encoding in face_encodings:
+    #             #         # print("Encoding obtenido:", encoding)
+    #             #         resultados = face_recognition.compare_faces(self.encodings_db, encoding)
+    #             #         # distancia = face_recognition.face_distance(self.known_encodings, encoding)
+    #             #         # print(f'Validación de comparación de datos biometricos', resultados)
+
+    #             #         if True in resultados:
                             
-                #             index = resultados.index(True)
-                #             nombre = self.nombres_personas_db[index]
+    #             #             index = resultados.index(True)
+    #             #             nombre = self.nombres_personas_db[index]
 
-                #             #Dibujar el nombre en la detección
-                #             cv2.putText(
-                #                 rgb_frame,
-                #                 nombre,
-                #                 (x, y - 10),  # posición (arriba del rectángulo)
-                #                 cv2.FONT_HERSHEY_SIMPLEX,
-                #                 0.9,  # tamaño de la fuente
-                #                 (0, 255, 0),  # color (verde)
-                #                 2,  # grosor
-                #                 cv2.LINE_AA
-                #             )
+    #             #             #Dibujar el nombre en la detección
+    #             #             cv2.putText(
+    #             #                 rgb_frame,
+    #             #                 nombre,
+    #             #                 (x, y - 10),  # posición (arriba del rectángulo)
+    #             #                 cv2.FONT_HERSHEY_SIMPLEX,
+    #             #                 0.9,  # tamaño de la fuente
+    #             #                 (0, 255, 0),  # color (verde)
+    #             #                 2,  # grosor
+    #             #                 cv2.LINE_AA
+    #             #             )
 
-                #             print(f'La persona es {nombre}')
+    #             #             print(f'La persona es {nombre}')
 
-                #         else:
-                #                                     #Dibujar el nombre en la detección
-                #             cv2.putText(
-                #                 rgb_frame,
-                #                 "Desconocido",
-                #                 (x, y - 10),
-                #                 cv2.FONT_HERSHEY_SIMPLEX,
-                #                 0.9,
-                #                 (0, 0, 255),  # rojo
-                #                 2,
-                #                 cv2.LINE_AA
-                #             )
+    #             #         else:
+    #             #                                     #Dibujar el nombre en la detección
+    #             #             cv2.putText(
+    #             #                 rgb_frame,
+    #             #                 "Desconocido",
+    #             #                 (x, y - 10),
+    #             #                 cv2.FONT_HERSHEY_SIMPLEX,
+    #             #                 0.9,
+    #             #                 (0, 0, 255),  # rojo
+    #             #                 2,
+    #             #                 cv2.LINE_AA
+    #             #             )
 
-                #             print(f'La persona no esta registrada')
+    #             #             print(f'La persona no esta registrada')
 
-                # else:
-                #     # No se pudo obtener el encoding con face_recognition
-                #     print("No se detectó algun rostro")
-        else:
+    #             # else:
+    #             #     # No se pudo obtener el encoding con face_recognition
+    #             #     print("No se detectó algun rostro")
+    #     else:
             
-            pass
+    #         pass
 
-        # Convertir para mostrar en QLabel
-        h, w, ch = rgb_frame.shape
-        bytes_per_line = ch * w
-        qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        self.cam_live.setPixmap(QPixmap.fromImage(qt_image))
+    #     # Convertir para mostrar en QLabel
+    #     h, w, ch = rgb_frame.shape
+    #     bytes_per_line = ch * w
+    #     qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+    #     self.cam_live.setPixmap(QPixmap.fromImage(qt_image))
 
         # if ret:
 
