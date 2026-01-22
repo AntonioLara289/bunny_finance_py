@@ -3,13 +3,12 @@ from PySide6.QtWidgets import (
     QLabel, QVBoxLayout, QHBoxLayout, QHeaderView,
     QPushButton, QDialog, QApplication, QTimeEdit
 )
-from PySide6.QtCore import QTime
+from PySide6.QtCore import QTime, QTimer
+from PySide6.QtCore import Qt
 import sys
 
 
-# =========================
 # Dialog para crear / editar sesión
-# =========================
 class SesionDialog(QDialog):
     def __init__(self, parent=None, nombre="", hora_inicio=None, hora_fin=None):
         super().__init__(parent)
@@ -71,20 +70,35 @@ class SesionDialog(QDialog):
         )
 
 
-# =========================
 # Widget principal
-# =========================
 class Sesiones(QWidget):
     def __init__(self):
         super().__init__()
         self._setup_ui()
         self._cargar_sesiones_demo()
 
+    def _actualizar_hora(self):
+        self.lbl_hora.setText(QTime.currentTime().toString("hh:mm:ss AP"))
+
     def _setup_ui(self):
         self.setWindowTitle("Sesiones")
         self.resize(600, 400)
 
         layout_principal = QVBoxLayout(self)
+
+        # Hora actual
+        self.lbl_hora = QLabel()
+        self.lbl_hora.setAlignment(Qt.AlignRight)
+        self.lbl_hora.setStyleSheet("font-size: 14px; color: gray;")
+
+        layout_principal.addWidget(self.lbl_hora)
+
+        # Timer para actualizar la hora
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._actualizar_hora)
+        self.timer.start(1000)
+
+        self._actualizar_hora()  # actualizar inmediatamente
 
         # Botones
         layout_botones = QHBoxLayout()
@@ -139,9 +153,7 @@ class Sesiones(QWidget):
     def _formatear_horario(self, inicio, fin):
         return f"{inicio.toString('hh:mm AP')} - {fin.toString('hh:mm AP')}"
 
-    # =========================
     # Acciones
-    # =========================
     def crear_sesion(self):
         dialog = SesionDialog(self)
 

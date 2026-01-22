@@ -4,7 +4,12 @@
 .venv/
 venv/
 mi_entorno/
+
+# Dlib
 dlib/
+
+# Carpeta de compilacion con pyinstaller
+dist/
 
 # Archivos de Python compilados
 __pycache__/
