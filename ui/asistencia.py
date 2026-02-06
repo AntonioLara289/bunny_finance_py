@@ -10,12 +10,13 @@ from ui.camaraReconocimientoWidget import CameraRecognitionWidget
 from database.db_manager import DBManager
 import json
 import time
+from datetime import datetime
 from log import log
 
 asistencias_status = {1: "Asistió", 0: "No asistió"}
 
 class AsistenciaPantalla(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, session_name=None, auto_start_camera=False, session_id=None):
         super().__init__()
 
         # Configuracion
@@ -40,11 +41,22 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         title.setAlignment(QtCore.Qt.AlignCenter)
         main_layout.addWidget(title)
 
+        # Sesión info
+        session_info = QLabel(f"Sesión: {session_name if session_name else 'Sin sesión'}")
+        session_info.setAlignment(QtCore.Qt.AlignCenter)
+        session_info_font = session_info.font()
+        session_info_font.setPointSize(10)
+        session_info_font.setBold(True)
+        session_info.setFont(session_info_font)
+        main_layout.addWidget(session_info)
+
         # Camara
         cam_frame = QFrame()
         cam_layout = QVBoxLayout(cam_frame)
 
         self.dbManager = DBManager()
+        self.session_name = session_name
+        self.session_id = session_id
         self.getPersonas = self.dbManager.getPersonas()
 
         self.encodings = [json.loads(p[3]) for p in self.getPersonas]
@@ -61,6 +73,13 @@ class AsistenciaPantalla(QtWidgets.QWidget):
 
         self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
         main_layout.addWidget(cam_frame)
+
+        # Auto-start camera if requested
+        if auto_start_camera:
+            try:
+                self.camera_widget.start_camera()
+            except Exception:
+                pass
 
         # Tabla
         table_frame = QFrame()
@@ -182,3 +201,56 @@ class AsistenciaPantalla(QtWidgets.QWidget):
             ws.column_dimensions[get_column_letter(col)].auto_size = True
 
         wb.save(path)
+
+    def exportarExcelTo(self, path):
+        # Same logic as exportarExcel but writing directly to `path`
+        if not path:
+            return
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Asistencias"
+
+        for col in range(self.table.columnCount()):
+            header = self.table.horizontalHeaderItem(col).text()
+            ws.cell(row=1, column=col + 1, value=header)
+
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item:
+                    ws.cell(row=row + 2, column=col + 1, value=item.text())
+                else:
+                    widget = self.table.cellWidget(row, col)
+                    if isinstance(widget, QComboBox):
+                        ws.cell(
+                            row=row + 2,
+                            column=col + 1,
+                            value=widget.currentText()
+                        )
+
+        for col in range(1, self.table.columnCount() + 1):
+            ws.column_dimensions[get_column_letter(col)].auto_size = True
+
+        wb.save(path)
+
+    def closeEvent(self, event):
+        # On close, stop camera and export automatically if session name provided
+        try:
+            # Stop camera safely
+            if getattr(self, 'camera_widget', None):
+                try:
+                    self.camera_widget.stop_camera()
+                except Exception:
+                    pass
+
+            if self.session_name:
+                fecha = datetime.now().strftime('%Y-%m-%d')
+                safe_name = self.session_name.replace(' ', '_')
+                filename = f"{safe_name}_{fecha}.xlsx"
+                try:
+                    self.exportarExcelTo(filename)
+                except Exception:
+                    pass
+        finally:
+            event.accept()

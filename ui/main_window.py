@@ -2,6 +2,8 @@ import random  # si no lo usas, elimínalo
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QStatusBar, QMenu
+from PySide6.QtCore import QTimer
+from datetime import datetime
 
 from ui.consultas import Consultas
 from ui.asistencia import AsistenciaPantalla
@@ -13,6 +15,7 @@ from ui.Historial import Historial
 from ui.sesiones import Sesiones
 from ui.animated_menu import AnimatedMenu
 from ui.acerca import Acerca
+from database.db_manager import DBManager
 
 try:
     import mediapipe as mp
@@ -51,6 +54,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Menús
         self._crear_menus()
+
+        # Sistema global de sesiones automáticas
+        self.db = DBManager()
+        self.active_session_id = None
+        self._saved_attendance = set()
+        self._prior_vista = None  # guardar vista anterior antes de sesión
+
+        self.session_timer = QTimer(self)
+        self.session_timer.timeout.connect(self._check_sessions_global)
+        self.session_timer.start(30000)  # revisar cada 30s
 
     # MENÚS
     def _crear_menus(self) -> None:
@@ -259,6 +272,96 @@ class MainWindow(QtWidgets.QMainWindow):
     def mostrarVistaAcerca(self) -> None:
         print("Mostrando vista acerca")
         self._cambiar_vista(Acerca)
+
+    # SESIONES AUTOMÁTICAS
+    def _check_sessions_global(self) -> None:
+        """Revisa si hay una sesión activa en este momento y navega automáticamente"""
+        ahora = datetime.now().time()
+        sesiones = self.db.getSesiones()
+
+        found_active = None
+        for id_sesion, nombre, inicio_str, fin_str in sesiones:
+            try:
+                inicio_time = datetime.strptime(inicio_str, "%H:%M").time()
+                fin_time = datetime.strptime(fin_str, "%H:%M").time()
+            except Exception:
+                continue
+
+            # Caso normal: inicio <= ahora < fin
+            if inicio_time <= ahora < fin_time:
+                found_active = (id_sesion, nombre)
+                break
+
+        # Si hay una sesión activa y no está ya abierta, navegar a asistencia
+        if found_active and self.active_session_id != found_active[0]:
+            self.active_session_id = found_active[0]
+            self._prior_vista = self.pantallaMostrandose  # guardar vista anterior
+
+            # Cambiar a AsistenciaPantalla con sesión activa
+            self.destroyActual()
+            self.pantallaMostrandose = AsistenciaPantalla(
+                session_name=found_active[1],
+                auto_start_camera=True,
+                session_id=found_active[0]
+            )
+            self.animate_switch(self.pantallaMostrandose)
+
+            # Reset saved attendance para esta sesión
+            self._saved_attendance = set()
+
+            # Poller para persistir asistencias
+            self._attendance_poller = QTimer(self)
+            self._attendance_poller.timeout.connect(self._persist_attendance_global)
+            self._attendance_poller.start(1000)
+
+        # Si no hay sesión activa pero antes sí, cerrar y volver
+        if not found_active and self.active_session_id is not None:
+            # Flush pending attendance
+            try:
+                self._persist_attendance_global()
+            except Exception:
+                pass
+
+            if getattr(self, '_attendance_poller', None):
+                try:
+                    self._attendance_poller.stop()
+                except Exception:
+                    pass
+
+            # Exportar automáticamente al cerrar sesión
+            if self.pantallaMostrandose:
+                try:
+                    self.pantallaMostrandose.close()
+                except Exception:
+                    pass
+
+            self.active_session_id = None
+
+            # Volver a vista anterior (o a Sesiones si no hay)
+            if self._prior_vista:
+                try:
+                    vista_anterior = self._prior_vista
+                    self._prior_vista = None
+                    self.destroyActual()
+                    self.pantallaMostrandose = vista_anterior
+                    self.animate_switch(self.pantallaMostrandose)
+                except Exception:
+                    self.mostrarVistaSesiones()
+            else:
+                self.mostrarVistaSesiones()
+
+    def _persist_attendance_global(self) -> None:
+        """Persiste asistencias confirmadas en la DB"""
+        if not isinstance(self.pantallaMostrandose, AsistenciaPantalla):
+            return
+
+        nuevos = self.pantallaMostrandose.attendance_given - self._saved_attendance
+        for persona_id in nuevos:
+            try:
+                self.db.guardarAsistencia(persona_id, self.active_session_id, True)
+            except Exception:
+                pass
+            self._saved_attendance.add(persona_id)
 
     # OTROS
     def salir(self) -> None:

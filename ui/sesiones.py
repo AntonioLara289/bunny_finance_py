@@ -1,12 +1,12 @@
 from PySide6.QtWidgets import (
     QWidget, QLineEdit, QTableWidget, QTableWidgetItem,
     QLabel, QVBoxLayout, QHBoxLayout, QHeaderView,
-    QPushButton, QDialog, QApplication, QTimeEdit
+    QPushButton, QDialog, QTimeEdit
 )
-from PySide6.QtCore import QTime, QTimer
+from PySide6.QtCore import QTime
 from PySide6.QtCore import Qt
-import sys
-
+from ui.top_bar import TopBar
+from database.db_manager import DBManager
 
 # Dialog para crear / editar sesión
 class SesionDialog(QDialog):
@@ -16,13 +16,11 @@ class SesionDialog(QDialog):
         self.setWindowTitle("Sesión")
         self.setFixedSize(420, 160)
 
-        # Defaults
         if hora_inicio is None:
             hora_inicio = QTime(8, 0)
         if hora_fin is None:
             hora_fin = QTime(9, 0)
 
-        # Inputs
         self.input_nombre = QLineEdit(nombre)
 
         self.time_inicio = QTimeEdit(hora_inicio)
@@ -31,7 +29,6 @@ class SesionDialog(QDialog):
         self.time_inicio.setDisplayFormat("hh:mm AP")
         self.time_fin.setDisplayFormat("hh:mm AP")
 
-        # Layouts
         fila_nombre = QHBoxLayout()
         fila_nombre.addWidget(QLabel("Nombre"))
         fila_nombre.addWidget(self.input_nombre)
@@ -43,7 +40,6 @@ class SesionDialog(QDialog):
         fila_tiempo.addWidget(QLabel("Hasta"))
         fila_tiempo.addWidget(self.time_fin)
 
-        # Botones
         btn_guardar = QPushButton("Guardar")
         btn_cancelar = QPushButton("Cancelar")
 
@@ -55,7 +51,6 @@ class SesionDialog(QDialog):
         fila_botones.addWidget(btn_guardar)
         fila_botones.addWidget(btn_cancelar)
 
-        # Layout principal
         layout = QVBoxLayout(self)
         layout.addLayout(fila_nombre)
         layout.addLayout(fila_tiempo)
@@ -74,11 +69,11 @@ class SesionDialog(QDialog):
 class Sesiones(QWidget):
     def __init__(self):
         super().__init__()
+        self.db = DBManager()
         self._setup_ui()
-        self._cargar_sesiones_demo()
+        self.row_id_map = {}
 
-    def _actualizar_hora(self):
-        self.lbl_hora.setText(QTime.currentTime().toString("hh:mm:ss AP"))
+        self._cargar_sesiones_db()
 
     def _setup_ui(self):
         self.setWindowTitle("Sesiones")
@@ -86,19 +81,9 @@ class Sesiones(QWidget):
 
         layout_principal = QVBoxLayout(self)
 
-        # Hora actual
-        self.lbl_hora = QLabel()
-        self.lbl_hora.setAlignment(Qt.AlignRight)
-        self.lbl_hora.setStyleSheet("font-size: 14px; color: gray;")
-
-        layout_principal.addWidget(self.lbl_hora)
-
-        # Timer para actualizar la hora
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self._actualizar_hora)
-        self.timer.start(1000)
-
-        self._actualizar_hora()  # actualizar inmediatamente
+        # TOP BAR
+        self.top_bar = TopBar("Sesiones")
+        layout_principal.addWidget(self.top_bar)
 
         # Botones
         layout_botones = QHBoxLayout()
@@ -135,20 +120,20 @@ class Sesiones(QWidget):
         layout_principal.addWidget(self.tabla_sesiones)
 
     def _cargar_sesiones_demo(self):
-        sesiones = [
-            ("Sesión 1", QTime(8, 0), QTime(9, 0)),
-            ("Sesión 2", QTime(9, 0), QTime(10, 0)),
-        ]
+        # Deprecated: now load from DB
+        pass
+
+    def _cargar_sesiones_db(self):
+        sesiones = self.db.getSesiones()
 
         self.tabla_sesiones.setRowCount(len(sesiones))
 
-        for fila, (nombre, inicio, fin) in enumerate(sesiones):
-            self.tabla_sesiones.setItem(
-                fila, 0, QTableWidgetItem(nombre)
-            )
-            self.tabla_sesiones.setItem(
-                fila, 1, QTableWidgetItem(self._formatear_horario(inicio, fin))
-            )
+        for fila, (id_sesion, nombre, inicio_str, fin_str) in enumerate(sesiones):
+            self.row_id_map[fila] = id_sesion
+            inicio = QTime.fromString(inicio_str, "HH:mm")
+            fin = QTime.fromString(fin_str, "HH:mm")
+            self.tabla_sesiones.setItem(fila, 0, QTableWidgetItem(nombre))
+            self.tabla_sesiones.setItem(fila, 1, QTableWidgetItem(self._formatear_horario(inicio, fin)))
 
     def _formatear_horario(self, inicio, fin):
         return f"{inicio.toString('hh:mm AP')} - {fin.toString('hh:mm AP')}"
@@ -160,15 +145,17 @@ class Sesiones(QWidget):
         if dialog.exec():
             nombre, inicio, fin = dialog.datos()
 
+            # Guardar en DB (usar formato 24h HH:MM)
+            inicio_str = inicio.toString("HH:mm")
+            fin_str = fin.toString("HH:mm")
+            new_id = self.db.guardarSesion(nombre, inicio_str, fin_str)
+
             fila = self.tabla_sesiones.rowCount()
             self.tabla_sesiones.insertRow(fila)
+            self.row_id_map[fila] = new_id
 
-            self.tabla_sesiones.setItem(
-                fila, 0, QTableWidgetItem(nombre)
-            )
-            self.tabla_sesiones.setItem(
-                fila, 1, QTableWidgetItem(self._formatear_horario(inicio, fin))
-            )
+            self.tabla_sesiones.setItem(fila, 0, QTableWidgetItem(nombre))
+            self.tabla_sesiones.setItem(fila, 1, QTableWidgetItem(self._formatear_horario(inicio, fin)))
 
     def modificar_sesion(self):
         fila = self.tabla_sesiones.currentRow()
@@ -178,22 +165,21 @@ class Sesiones(QWidget):
         nombre_actual = self.tabla_sesiones.item(fila, 0).text()
         horario_actual = self.tabla_sesiones.item(fila, 1).text()
 
-        # Parse times back (safe)
         inicio_str, fin_str = horario_actual.split(" - ")
         inicio = QTime.fromString(inicio_str, "hh:mm AP")
         fin = QTime.fromString(fin_str, "hh:mm AP")
 
-        dialog = SesionDialog(
-            self,
-            nombre_actual,
-            inicio,
-            fin
-        )
+        dialog = SesionDialog(self, nombre_actual, inicio, fin)
 
         if dialog.exec():
             nombre, inicio, fin = dialog.datos()
 
+            # Actualizar en DB
+            id_sesion = self.row_id_map.get(fila)
+            if id_sesion:
+                inicio_db = inicio.toString("HH:mm")
+                fin_db = fin.toString("HH:mm")
+                self.db.actualizarSesion(id_sesion, nombre, inicio_db, fin_db)
+
             self.tabla_sesiones.item(fila, 0).setText(nombre)
-            self.tabla_sesiones.item(fila, 1).setText(
-                self._formatear_horario(inicio, fin)
-            )
+            self.tabla_sesiones.item(fila, 1).setText(self._formatear_horario(inicio, fin))

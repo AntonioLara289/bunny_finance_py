@@ -13,6 +13,8 @@ class DBManager:
         self.cursor = self.conn.cursor()
         self.cursor.execute("PRAGMA table_info(table_name)")
         self.crearTablaPersonas()
+        self.crearTablaSesiones()
+        self.crearTablaAsistencias()
 
     def getColumns(self):
         self.conn = sqlite3.connect(self.db_path)
@@ -110,6 +112,93 @@ class DBManager:
         self.cursor = self.conn.cursor()
 
         self.cursor.execute("CREATE TABLE IF NOT EXISTS historial_detecciones (id_deteccion INTEGER PRIMARY KEY AUTOINCREMENT, key_persona INTEGER NOT NULL, fecha TEXT NOT NULL)")
+
+        self.conn.commit()
+        self.conn.close()
+
+    def crearTablaSesiones(self):
+
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        # Stored times as 24-hour HH:MM strings
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS sesiones (" \
+        "id_sesion INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "nombre TEXT NOT NULL, " \
+        "inicio TEXT NOT NULL, " \
+        "fin TEXT NOT NULL)")
+
+        self.conn.commit()
+        self.conn.close()
+
+    def getSesiones(self):
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS sesiones (" \
+        "id_sesion INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "nombre TEXT NOT NULL, " \
+        "inicio TEXT NOT NULL, " \
+        "fin TEXT NOT NULL)")
+
+        self.cursor.execute("SELECT id_sesion, nombre, inicio, fin FROM sesiones")
+        filas = self.cursor.fetchall()
+
+        self.conn.commit()
+        self.conn.close()
+
+        return filas
+
+    def guardarSesion(self, nombre, inicio_hhmm, fin_hhmm):
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        data = (nombre, inicio_hhmm, fin_hhmm)
+
+        self.cursor.execute("INSERT INTO sesiones (nombre, inicio, fin) VALUES (?, ?, ?)", data)
+        last_id = self.cursor.lastrowid
+
+        self.conn.commit()
+        self.conn.close()
+
+        return last_id
+
+    def actualizarSesion(self, id_sesion, nombre, inicio_hhmm, fin_hhmm):
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute(
+            "UPDATE sesiones SET nombre = ?, inicio = ?, fin = ? WHERE id_sesion = ?",
+            (nombre, inicio_hhmm, fin_hhmm, id_sesion)
+        )
+
+        self.conn.commit()
+        self.conn.close()
+
+    def crearTablaAsistencias(self):
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS asistencias (" \
+        "id_asistencia INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "id_persona INTEGER NOT NULL, " \
+        "id_sesion INTEGER NOT NULL, " \
+        "fecha TEXT NOT NULL, " \
+        "presente INTEGER NOT NULL)")
+
+        self.conn.commit()
+        self.conn.close()
+
+    def guardarAsistencia(self, id_persona, id_sesion, presente, fecha_iso=None):
+        if fecha_iso is None:
+            fecha_iso = datetime.now().isoformat()
+
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        data = (id_persona, id_sesion, fecha_iso, int(bool(presente)))
+
+        self.cursor.execute("INSERT INTO asistencias (id_persona, id_sesion, fecha, presente) VALUES (?, ?, ?, ?)", data)
 
         self.conn.commit()
         self.conn.close()
