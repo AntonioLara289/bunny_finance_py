@@ -8,6 +8,7 @@ from database.db_manager import DBManager
 class Consultas(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
+        self.setAccessibleName("ConsultasWidget")
         # ===== Base layout =====
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
@@ -17,6 +18,7 @@ class Consultas(QtWidgets.QWidget):
         title = QLabel("Consultas de Personas")
         title.setObjectName("TitleLabel")
         title.setAlignment(QtCore.Qt.AlignCenter)
+        title.setStyleSheet("font-size:18px; font-weight:600;")
         main_layout.addWidget(title)
 
         # ===== Search section =====
@@ -33,11 +35,17 @@ class Consultas(QtWidgets.QWidget):
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Buscar por nombre...")
         self.search_box.setObjectName("SearchBox")
+        # Clear button
+        try:
+            self.search_box.setClearButtonEnabled(True)
+        except Exception:
+            pass
+        self.search_box.setToolTip("Filtrar la tabla por nombre")
         search_layout.addWidget(self.search_box)
 
         main_layout.addWidget(search_frame)
 
-        # ===== Table section =====
+        # Seccion de tabla
         table_frame = QFrame()
         table_frame.setObjectName("SectionFrame")
         table_layout = QVBoxLayout(table_frame)
@@ -48,11 +56,11 @@ class Consultas(QtWidgets.QWidget):
         table_label.setObjectName("SectionTitle")
         table_layout.addWidget(table_label)
 
-        # ===== Database connection =====
+        # Conexion a base de datos
         self.dbManager = DBManager()
         self.getPersonas = self.dbManager.getPersonas()
 
-        # ===== Table setup =====
+        # Setup para la tabla
         rows = self.dbManager.getRows()
         self.table = QTableWidget(rows, 5)
         self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Muestras", "Fecha de registro", "Estatus"])
@@ -62,7 +70,7 @@ class Consultas(QtWidgets.QWidget):
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.table.setObjectName("DataTable")
 
-        # ===== Fill the table =====
+        #  Llenado de la tabla
         for row_idx, persona in enumerate(self.getPersonas):
             self.table.setItem(row_idx, 0, QTableWidgetItem(str(persona[0])))  # ID
             self.table.setItem(row_idx, 1, QTableWidgetItem(str(persona[1])))  # Nombre
@@ -76,6 +84,8 @@ class Consultas(QtWidgets.QWidget):
 
             status_combo.currentTextChanged.connect(lambda text, pid=persona[0]: self.update_status(pid, text))
             self.table.setCellWidget(row_idx, 4, status_combo)
+
+        self.table.setSortingEnabled(True)
 
         table_layout.addWidget(self.table)
         main_layout.addWidget(table_frame)

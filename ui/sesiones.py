@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QLineEdit, QTableWidget, QTableWidgetItem,
     QLabel, QVBoxLayout, QHBoxLayout, QHeaderView,
-    QPushButton, QDialog, QTimeEdit
+    QPushButton, QDialog, QTimeEdit, QStyle
 )
 from PySide6.QtCore import QTime
 from PySide6.QtCore import Qt
@@ -69,6 +69,7 @@ class SesionDialog(QDialog):
 class Sesiones(QWidget):
     def __init__(self):
         super().__init__()
+        self.setAccessibleName("SesionesWidget")
         self.db = DBManager()
         self._setup_ui()
         self.row_id_map = {}
@@ -90,12 +91,19 @@ class Sesiones(QWidget):
 
         self.btn_crear = QPushButton("Crear sesión")
         self.btn_modificar = QPushButton("Modificar sesión")
+        self.btn_eliminar = QPushButton("Eliminar sesión")
+
+        self.btn_crear.setToolTip("Crear nueva sesión")
+        self.btn_modificar.setToolTip("Modificar la sesión seleccionada")
+        self.btn_eliminar.setToolTip("Eliminar la sesión seleccionada")
 
         self.btn_crear.clicked.connect(self.crear_sesion)
         self.btn_modificar.clicked.connect(self.modificar_sesion)
+        self.btn_eliminar.clicked.connect(self.eliminar_sesion)
 
         layout_botones.addWidget(self.btn_crear)
         layout_botones.addWidget(self.btn_modificar)
+        layout_botones.addWidget(self.btn_eliminar)
         layout_botones.addStretch()
 
         # Tabla
@@ -183,3 +191,31 @@ class Sesiones(QWidget):
 
             self.tabla_sesiones.item(fila, 0).setText(nombre)
             self.tabla_sesiones.item(fila, 1).setText(self._formatear_horario(inicio, fin))
+
+    def eliminar_sesion(self):
+        fila = self.tabla_sesiones.currentRow()
+        if fila < 0:
+            return
+
+        # Obtener id_sesion
+        id_sesion = self.row_id_map.get(fila)
+        if not id_sesion:
+            return
+
+        # Eliminar de BD
+        try:
+            self.db.eliminarSesion(id_sesion)
+        except Exception:
+            return
+
+        # Eliminar de tabla
+        self.tabla_sesiones.removeRow(fila)
+
+        # Actualizar row_id_map
+        new_map = {}
+        for row in range(self.tabla_sesiones.rowCount()):
+            if row in self.row_id_map:
+                new_map[row] = self.row_id_map[row]
+            elif row + 1 in self.row_id_map:
+                new_map[row] = self.row_id_map[row + 1]
+        self.row_id_map = new_map

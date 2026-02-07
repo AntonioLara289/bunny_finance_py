@@ -10,7 +10,7 @@ def load_stylesheet(app: QApplication, filename: str) -> None:
     import traceback
 
     try:
-        # Mostrar la ruta absoluta para checar que el path sea correcto
+        # Mostrar la ruta absoluta para revisar que la ruta sea correcto
         full_path = os.path.abspath(filename)
         print(f"[STYLE] Cargando stylesheet: {filename} -> {full_path}")
 

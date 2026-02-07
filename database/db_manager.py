@@ -175,6 +175,15 @@ class DBManager:
         self.conn.commit()
         self.conn.close()
 
+    def eliminarSesion(self, id_sesion):
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("DELETE FROM sesiones WHERE id_sesion = ?", (id_sesion,))
+
+        self.conn.commit()
+        self.conn.close()
+
     def crearTablaAsistencias(self):
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()

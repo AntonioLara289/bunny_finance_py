@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets, QtCore
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QCheckBox
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QCheckBox, QPushButton, QHBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import umap
@@ -16,17 +16,30 @@ class UMAPViewer(QtWidgets.QWidget):
         # Ajustes iniciales de ventana
         self.setWindowTitle("UMAP Viewer")
         self.resize(900, 700)
+        self.setMinimumSize(700, 500)
+        self.setAccessibleName("UMAPViewer")
 
         # Layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(12)
 
-        # Titulo
+        # Header with title + refresh
         title = QLabel("Visualización UMAP de Personas")
-        title.setAlignment(QtCore.Qt.AlignCenter)
+        title.setAlignment(QtCore.Qt.AlignLeft)
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
-        main_layout.addWidget(title)
+
+        refresh_btn = QPushButton("⟳")
+        refresh_btn.setToolTip("Recalcular la proyección UMAP")
+        refresh_btn.setFixedSize(28, 28)
+        refresh_btn.setAccessibleName("RefreshUMAP")
+        refresh_btn.clicked.connect(self._on_refresh)
+
+        header = QHBoxLayout()
+        header.addWidget(title)
+        header.addStretch()
+        header.addWidget(refresh_btn)
+        main_layout.addLayout(header)
 
         # Descripccion de pantalla
         text = QLabel(
@@ -54,6 +67,11 @@ class UMAPViewer(QtWidgets.QWidget):
 
         # Canvas de Matplotlib
         self.figure = Figure()
+        # ensure white background for better contrast with QSS
+        try:
+            self.figure.patch.set_facecolor('white')
+        except Exception:
+            pass
         self.canvas = FigureCanvas(self.figure)
         main_layout.addWidget(self.canvas, stretch=1)
 
@@ -66,6 +84,14 @@ class UMAPViewer(QtWidgets.QWidget):
         self.annotation = None
         self._umap_drawn = False
         self.cargar_personas()
+
+    def _on_refresh(self):
+        """Refresh UMAP data and redraw."""
+        try:
+            self.cargar_personas()
+            self.plot_umap()
+        except Exception as e:
+            print("[UMAP] Error al refrescar:", e)
 
     # Mostrar
     def showEvent(self, event):

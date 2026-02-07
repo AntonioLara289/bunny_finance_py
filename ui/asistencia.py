@@ -19,6 +19,8 @@ class AsistenciaPantalla(QtWidgets.QWidget):
     def __init__(self, session_name=None, auto_start_camera=False, session_id=None):
         super().__init__()
 
+        self.setAccessibleName("AsistenciaPantalla")
+
         # Configuracion
         self.SIMILARITY_THRESHOLD = 60.0
         self.REQUIRED_SECONDS = 5.0
@@ -69,6 +71,7 @@ class AsistenciaPantalla(QtWidgets.QWidget):
             ids_db=self.ids
         )
         self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.camera_widget.setMinimumHeight(320)
         cam_layout.addWidget(self.camera_widget)
 
         self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
@@ -122,6 +125,12 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         export_btn.clicked.connect(
             lambda: (self.exportarExcel(), log.push("Lista exportada"))
         )
+        try:
+            export_btn.setToolTip("Exportar la lista actual de asistencias a Excel")
+            export_btn.setAccessibleName("ExportarExcel")
+            export_btn.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogSaveButton))
+        except Exception:
+            pass
         main_layout.addWidget(export_btn, alignment=QtCore.Qt.AlignRight)
 
     # Logica de asistencia
