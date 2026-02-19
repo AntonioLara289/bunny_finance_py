@@ -28,8 +28,8 @@ import math
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
 # from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
-from ui.workers.camaraWorker import CameraWorker, FaceRecognitionWorker
-
+from ui.workers.camaraWorker import CameraWorker
+from ui.workers.faceRecognitionWorker import FaceRecognitionWorker
 
 class EscanerRostro(QtWidgets.QWidget):
     
@@ -212,18 +212,18 @@ class EscanerRostro(QtWidgets.QWidget):
 
 
     def abrirCamara(self):
+        
         self.boton_abrir_camara.hide()
         self.boton_guardar_foto.show()
         self.cam_live.show()
         self.boton_cerrar_camara.show()
         self.cargarDatosPersonas() # Carga datos de la DB
 
-        # --- INICIO DE HILOS ---
-        
-        # 1. Inicializar Captura de Cámara (sigue en el hilo principal)
-        # Iniciar cámara
+        self.iniciarCamaraWorker()
+
+    def iniciarCamaraWorker(self):
         self.cap = cv2.VideoCapture(0)
-        
+
         # Establecer una resolución más baja para mayor velocidad
         # (Puedes probar con 640x480 o 960x540)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -231,35 +231,86 @@ class EscanerRostro(QtWidgets.QWidget):
         
         # Establecer FPS (opcional, algunas cámaras lo ignoran)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
-        
-        # 2. Worker para la cámara (Lectura de frames)
+        # ... (tus ajustes de resolución) ...
+
+        # 1. Configurar Hilos
         self.cam_thread = QThread()
-        self.cam_worker = CameraWorker(self.cap) 
-        self.cam_worker.moveToThread(self.cam_thread)
-        
-        # 3. Worker para el Reconocimiento Facial (Detección e Identificación)
-        self.face_worker = FaceRecognitionWorker(
-            self.encodings_db, 
-            self.nombres_personas_db, 
-            self.ids_personas_db
-        )
         self.face_thread = QThread()
+
+        # 2. Configurar Workers
+        self.cam_worker = CameraWorker(self.cap)
+        self.face_worker = FaceRecognitionWorker(self.encodings_db, self.nombres_personas_db, self.ids_personas_db)
+
+        # 3. Mover a hilos
+        self.cam_worker.moveToThread(self.cam_thread)
         self.face_worker.moveToThread(self.face_thread)
 
-        # Conexiones: Flujo de datos: Camera -> FaceRecog -> UI
-        
-        # CameraWorker emite el frame de video al FaceRecognitionWorker (slot)
+        # --- CONEXIONES CRÍTICAS ---
+
+        # Flujo: Cámara -> Reconocimiento -> UI
         self.cam_worker.frame_ready.connect(self.face_worker.process_frame)
+        self.face_worker.frame_processed.connect(self.update_image)
+
+        # Limpieza automática al terminar
+        self.cam_worker.finished.connect(self.cam_thread.quit)
+        self.face_worker.finished.connect(self.face_thread.quit)
         
-        # FaceRecognitionWorker emite el frame procesado (con rectángulos y nombres) a la UI (slot)
-        self.face_worker.frame_processed.connect(self.update_image) 
-        
-        # Inicio de hilos (llama al método run() de los workers)
+        # Iniciar
         self.cam_thread.started.connect(self.cam_worker.run)
         self.face_thread.start()
-        self.cam_thread.start() # El orden importa, FaceRecog debe estar esperando antes de que Camera empiece a emitir frames.
-            
+        self.cam_thread.start()
+        
+    def liberar_todos_los_recursos(self):
+        """Libera TODOS los recursos antes de cerrar"""
+        
+        # 1. Detener workers de cámara
+        if hasattr(self, 'cam_worker') and self.cam_worker:
+            print("Deteniendo worker de cámara...")
+            self.cam_worker.stop()
+        
+        # 2. Detener worker de reconocimiento
+        if hasattr(self, 'face_worker') and self.face_worker:
+            print("Deteniendo worker de reconocimiento...")
+            self.face_worker.stop()
+        
+        # 3. Esperar que terminen los threads
+        self.esperar_threads()
+        
+        # 4. Liberar cámara física
+        if hasattr(self, 'cap') and self.cap:
+            if self.cap.isOpened():
+                print("Liberando cámara física...")
+                self.cap.release()
+            self.cap = None
+        
+        # 5. Limpiar referencias
+        self.cam_worker = None
+        self.face_worker = None
+        self.cam_thread = None
+        self.face_thread = None
+        
+        print("Todos los recursos liberados")
+
+    def esperar_threads(self, timeout=1000):
+        """Espera que los threads terminen con timeout"""
+        
+        threads = []
+        if hasattr(self, 'cam_thread') and self.cam_thread.isRunning():
+            threads.append(("Cámara", self.cam_thread))
+        if hasattr(self, 'face_thread') and self.face_thread.isRunning():
+            threads.append(("Reconocimiento", self.face_thread))
+        
+        for nombre, thread in threads:
+            print(f"Esperando thread de {nombre}...")
+            if not thread.wait(timeout):  # Esperar máximo 1 segundo
+                print(f"Thread de {nombre} no respondió, forzando...")
+                thread.terminate()  # Forzar (solo como último recurso)
+                thread.wait(500)
+        # ... otras conexiones existentes ...
+        # self.cam_worker.pausa_cambio.connect(self.on_camera_pause_changed)
+
         # --- FIN DE HILOS ---
+
 
     # def abrirCamara(self):
     #     self.boton_abrir_camara.hide()
@@ -544,80 +595,64 @@ class EscanerRostro(QtWidgets.QWidget):
 
     def guardarFoto(self):
 
-        if self.frame_camera is not None:
-            rgb = cv2.cvtColor(self.frame_camera, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb.shape
-            qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
-            pixmap = QPixmap.fromImage(qimg)
-            pixmap_label = QLabel()
-            pixmap_label.setPixmap(pixmap)
-            pixmap_label.setFixedSize(200, 200)
-            pixmap_label.setScaledContents(True)
-            
-            if self.cantidad_fotos < 3:
-
-                # Agregamos la imagen al layout
-                self.layout_scroll_bar.addWidget(pixmap_label)
+        #obtener primero la foto del worker
+        if hasattr(self, 'cam_worker') and self.cam_worker:
+            frame = self.cam_worker.obtenerUltimoFrame()
+            if frame is not None:
                 
-                boton_foto_camara = QPushButton("Borrar Foto")
-                boton_foto_camara.setGeometry(50, 50, 200, 40) # x=50, y=50, width=150, height=40
-                boton_foto_camara.setStatusTip("Elimina la foto de aquí")
-                boton_foto_camara.clicked.connect(lambda _, idx=self.cantidad_fotos: self.borrarFoto(idx))
-                self.layout_scroll_bar.addWidget(boton_foto_camara)
+                pixmap_label = self.convertirFrameALabel(frame=frame)
+                pixmap = self.convertirFrameAPixmap(frame=frame)
                 
-                # self.frames_camera.append(self.frame_camera)
+                if self.cantidad_fotos < 3:
 
-                # self.fotografias[self.cantidad_fotos]["data"] = self.frame_camera
-                self.fotografias[self.cantidad_fotos] = {
-                    "label": pixmap_label,
-                    "boton": boton_foto_camara,
-                    "data": self.frame_camera,
-                    "pixmap": pixmap
-                }
+                    self.almacenarFotos(pixmap_label=pixmap_label, pixmap=pixmap, frame=frame)
 
-                print(f"Aún no, hay {self.cantidad_fotos} fotos")
-                self.cantidad_fotos += 1
+                    if self.cantidad_fotos < 3:
+                        return
 
-            if self.cantidad_fotos < 3:
-                return
+                self.botonGuardarFotoCambiarTexto(cambiar=1)
 
-            self.botonGuardarFotoCambiarTexto(cambiar=1)
+                self.pausarCamara()
+                # rgb = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+                # h, w, ch = rgb.shape
+                # qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+                # pixmap = QPixmap.fromImage(qimg)
+                
+                self.modal = NombrarFotoCapturada(
+                    self, 
+                    #mandamos la foto que se mostrara en el modal
+                    data= self.fotografias[1]["pixmap"], 
+                    #mandamos todas las fotos en crudo
+                    imagenes=self.obtenerFotografias(), 
+                    #mandamos los encodings generados en promedio
+                    encodigns=self.generarEncodingPromedio()
+                )
+                # self.modal.show()
+                self.resultado = self.modal.exec()
+                
+                if self.resultado == QDialog.Accepted:
+                    # self.fotografias = []
 
-            self.cap.release()
-            rgb = cv2.cvtColor(self.frame_camera, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb.shape
-            qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
-            pixmap = QPixmap.fromImage(qimg)
-            
-            self.modal = NombrarFotoCapturada(
-                self, 
-                #mandamos la foto que se mostrara en el modal
-                data= self.fotografias[1]["pixmap"], 
-                #mandamos todas las fotos en crudo
-                imagenes=self.obtenerFotografias(), 
-                #mandamos los encodings generados en promedio
-                encodigns=self.generarEncodingPromedio()
-            )
-            # self.modal.show()
-            self.resultado = self.modal.exec()
-            
-            if self.resultado == QDialog.Accepted:
-                # self.fotografias = []
+                    # for item in range(self.cantidad_fotos):
+                    #     print('item: ', item)
+                    #     self.borrarFoto(item)
+                    self.obtenerEncodingsDeFotos()
+                    print("Aceptada")
+                elif self.resultado == QDialog.Rejected:
+                    print("Rechazado")
+                        
+                    # self.modal.accept()
+
+                else:
+                    print("Algo salio mal...")
 
                 for item in range(self.cantidad_fotos):
                     print('item: ', item)
                     self.borrarFoto(item)
-                    
-                print("Aceptada")
-            elif self.resultado == QDialog.Rejected:
-                print("Rechazado")
-                
-            self.abrirCamara()
-            # self.modal.accept()
 
-        else:
-            print("Algo salio mal...")
-
+                self.reanudarCamara()
+            return None
+            
     def borrarFoto(self, idx):
         if idx in self.fotografias:
             widgets = self.fotografias[idx]
@@ -792,3 +827,73 @@ class EscanerRostro(QtWidgets.QWidget):
             print ("Persona mirando de frente (no ideal para perfil)")
         else:
             print ("Giro fuera del rango esperado")
+
+    def convertirFrameALabel(self, frame):
+        #esta función nos permite que las fotos puedan ser visibles en la interfaz
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimg)
+        pixmap_label = QLabel()
+        pixmap_label.setPixmap(pixmap)
+        pixmap_label.setFixedSize(200, 200)
+        pixmap_label.setScaledContents(True)
+
+        return pixmap_label
+    
+    def convertirFrameAPixmap(self, frame):
+        
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimg)
+
+        return pixmap
+
+    
+    def almacenarFotos(self, pixmap_label, pixmap, frame):
+        print(f"Tipo de pixmap_label: {type(pixmap_label)}")
+        print(f"Tipo de pixmap: {type(pixmap)}")
+        
+        # Agregamos la imagen al layout
+        self.layout_scroll_bar.addWidget(pixmap_label)
+        
+        boton_foto_camara = QPushButton("Borrar Foto")
+        boton_foto_camara.setGeometry(50, 50, 200, 40) # x=50, y=50, width=150, height=40
+        boton_foto_camara.setStatusTip("Elimina la foto de aquí")
+        boton_foto_camara.clicked.connect(lambda _, idx=self.cantidad_fotos: self.borrarFoto(idx))
+        self.layout_scroll_bar.addWidget(boton_foto_camara)
+        
+        # self.frames_camera.append(self.frame_camera)
+
+        # self.fotografias[self.cantidad_fotos]["data"] = self.frame_camera
+        self.fotografias[self.cantidad_fotos] = {
+            "label": pixmap_label,
+            "boton": boton_foto_camara,
+            "data": frame,
+            "pixmap": pixmap
+        }
+
+        print(f"Aún no, hay {self.cantidad_fotos} fotos")
+        self.cantidad_fotos += 1
+
+    def pausarCamara(self):
+        """Pausa la cámara desde la UI"""
+        if hasattr(self, 'cam_worker'):
+            self.cam_worker.alternarEstado()
+            # self.boton_pausa.setText("Reanudar")
+            # self.boton_pausa.clicked.disconnect()
+            # self.boton_pausa.clicked.connect(self.reanudarCamara)
+
+    def reanudarCamara(self):
+        """Reanuda la cámara desde la UI"""
+        if hasattr(self, 'cam_worker'):
+            self.cam_worker.alternarEstado()
+            # self.boton_pausa.setText("Pausar")
+            # self.boton_pausa.clicked.disconnect()
+            # self.boton_pausa.clicked.connect(self.pausarCamara)
+
+    def alternarPausaCamara(self):
+        """Alterna pausa con un solo botón"""
+        if hasattr(self, 'cam_worker'):
+            self.cam_worker.alternarEstado()
