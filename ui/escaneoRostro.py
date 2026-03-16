@@ -236,7 +236,7 @@ class EscanerRostro(QtWidgets.QWidget):
 
         # 2. Configurar Workers
         self.cam_worker = CameraWorker(self.cap)
-        self.face_worker = FaceRecognitionWorker(self.encodings_db, self.nombres_personas_db, self.ids_personas_db)
+        self.face_worker = FaceRecognitionWorker(self.encodings_db, self.nombres_personas_db, self.ids_personas_db, self.encodings_agrupados)
 
         # 3. Mover a hilos
         self.cam_worker.moveToThread(self.cam_thread)
@@ -682,6 +682,9 @@ class EscanerRostro(QtWidgets.QWidget):
         self.encodings_db = []
         self.nombres_personas_db = []
         self.ids_personas_db = []
+        
+        # Nueva estructura: diccionario {id_persona: [encoding_izq, encoding_frente, encoding_der]}
+        self.encodings_agrupados = {}
 
         self.getPersonas = self.dbManager.getPersonas()
 
@@ -691,19 +694,23 @@ class EscanerRostro(QtWidgets.QWidget):
             fre = json.loads(persona[4])
             der = json.loads(persona[5])
             
-            # 2. USAR EXTEND en lugar de append con corchetes
+            # 2. USAR EXTEND en lugar de append con corchetes (mantener compatibilidad temporal)
             # Extend añade los elementos de la lista uno por uno al nivel principal
             self.encodings_db.extend([izq, fre, der])
             
             # 3. Hacemos lo mismo con nombres e IDs para que los índices coincidan
             self.nombres_personas_db.extend([persona[1], persona[1], persona[1]])
             self.ids_personas_db.extend([persona[0], persona[0], persona[0]])
+            
+            # 4. Nueva estructura agrupada
+            self.encodings_agrupados[persona[0]] = [izq, fre, der]
 
         # MUY IMPORTANTE: Convertir a array de Numpy al final para el Worker
         self.encodings_db = np.array(self.encodings_db)
         
         print(f"Base de datos cargada. Total de vectores: {len(self.encodings_db)}")
         print(f"Forma del array (debe ser N, 128): {self.encodings_db.shape}")
+        print(f"Total personas agrupadas: {len(self.encodings_agrupados)}")
 
     # def onDestroy(self, event):
     #     print("Cerrando escaneo de rostro")

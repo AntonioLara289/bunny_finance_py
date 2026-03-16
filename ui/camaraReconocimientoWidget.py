@@ -10,13 +10,14 @@ import numpy as np
 class CameraRecognitionWidget(QWidget):
     faceRecognized = Signal(str, int, float)  # nombre, id, similaridad
 
-    def __init__(self, parent=None, encodings_db=None, names_db=None, ids_db=None):
+    def __init__(self, parent=None, encodings_db=None, names_db=None, ids_db=None, encodings_agrupados=None):
         super().__init__(parent)
 
         # Datos conocidos (de DB)
         self.encodings_db = encodings_db or []
         self.names_db = names_db or []
         self.ids_db = ids_db or []
+        self.encodings_agrupados = encodings_agrupados
 
         # UI
         self.layout = QVBoxLayout(self)
@@ -103,7 +104,44 @@ class CameraRecognitionWidget(QWidget):
             similarity = 0.0
             id_ = -1
 
-            if self.encodings_db:
+            # Estrategia de comparación por promedio por persona (nueva)
+            if self.encodings_agrupados and len(self.encodings_agrupados) > 0:
+                mejor_distancia = float('inf')
+                mejor_persona_id = None
+                mejor_nombre = "Desconocido"
+                
+                # Iterar sobre cada persona en la base de datos
+                for persona_id, encodings_lista in self.encodings_agrupados.items():
+                    # Calcular distancias para los 3 perfiles de esta persona
+                    if len(encodings_lista) == 0:
+                        continue
+                        
+                    # Convertir a array numpy para face_distance
+                    encodings_array = np.array(encodings_lista)
+                    distancias = face_recognition.face_distance(encodings_array, encoding)
+                    
+                    # Calcular distancia promedio para esta persona
+                    distancia_promedio = np.mean(distancias)
+                    
+                    # Mantener el mejor (menor distancia promedio)
+                    if distancia_promedio < mejor_distancia:
+                        mejor_distancia = distancia_promedio
+                        mejor_persona_id = persona_id
+                        # Buscar el nombre correspondiente al ID
+                        if self.ids_db and persona_id in self.ids_db:
+                            idx = self.ids_db.index(persona_id)
+                            mejor_nombre = self.names_db[idx]
+                
+                # Umbral estricto para 90% de similitud (distancia < 0.1)
+                if mejor_distancia < 0.1:
+                    name = mejor_nombre
+                    id_ = mejor_persona_id
+                    color = (0, 255, 0)
+                    similarity = round((1 - mejor_distancia) * 100, 2)
+                    self.faceRecognized.emit(name, id_, similarity)
+            
+            # Fallback: usar estructura plana antigua si no hay agrupada
+            elif self.encodings_db:
                 matches = face_recognition.compare_faces(self.encodings_db, encoding)
                 face_distances = face_recognition.face_distance(self.encodings_db, encoding)
                 best_match_index = np.argmin(face_distances) if len(face_distances) > 0 else None

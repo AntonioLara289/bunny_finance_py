@@ -11,11 +11,15 @@ class FaceRecognitionWorker(QObject):
     frame_processed = Signal(np.ndarray)
     finished = Signal()
 
-    def __init__(self, encodings_db, nombres_db, ids_db, parent=None):
+    def __init__(self, encodings_db, nombres_db, ids_db, encodings_agrupados=None, parent=None):
         super().__init__(parent)
-        self.known_encodings = np.array(encodings_db)
+        # Mantener compatibilidad con estructura plana si no se pasa agrupada
+        self.known_encodings = np.array(encodings_db) if encodings_db else np.array([])
         self.known_names = nombres_db
         self.known_ids = ids_db
+        
+        # Nueva estructura agrupada para comparación por persona
+        self.encodings_agrupados = encodings_agrupados
         
         self.frame_counter = 0
         self.skip_frames = 5  
@@ -29,32 +33,14 @@ class FaceRecognitionWorker(QObject):
         if frame is None or not self._running:
             return
 
-        # frame_equilibrado = self.aplicar_clahe(frame)
+        # 1. Aplicar preprocesamiento de brillo y contraste (CLAHE mejorado)
+        frame_mejorado = self.aplicar_clahe(frame)
 
-        # small_frame = cv2.resize(frame_equilibrado, (0, 0), fx=0.5, fy=0.5)
-        # rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
-
-        #     # --- MEJORA DE LUZ ---
-        # # Convertimos a espacio de color LAB para ajustar solo el brillo (L)
-        # lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-        # l, a, b = cv2.split(lab)
+        # 2. Redimensionar para procesar más rápido (opcional pero recomendado)
+        # small_frame = cv2.resize(frame_mejorado, (0, 0), fx=0.5, fy=0.5)
         
-        # # Aplicamos CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        # cl = clahe.apply(l)
-        
-        # # Fusionamos y volvemos a BGR
-        # limg = cv2.merge((cl,a,b))
-        # frame_mejorado = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-        # # ---------------------
-
-        # rgb_frame = cv2.cvtColor(frame_mejorado, cv2.COLOR_BGR2RGB)
-        # ... resto de tu lógica de detección
-
-        # Redimensionar para procesar más rápido (opcional pero recomendado)
-        # small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-        rgb_frame_clah = self.aplicar_clahe(frame)
-        rgb_frame = cv2.cvtColor(rgb_frame_clah, cv2.COLOR_BGR2RGB)
+        # 3. Convertir a RGB para face_recognition
+        rgb_frame = cv2.cvtColor(frame_mejorado, cv2.COLOR_BGR2RGB)
 
         if self.frame_counter % self.skip_frames == 0:
             # Detección de rostros
@@ -117,48 +103,94 @@ class FaceRecognitionWorker(QObject):
         lab = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
 
-        # 2. Creamos el objeto CLAHE
-        # clipLimit: 2.0 es el estándar para no generar ruido artificial
-        # tileGridSize: (8,8) divide la cara en una rejilla para nivelar la luz
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        # 2. Calcular brillo promedio para ajuste dinámico
+        brillo_promedio = np.mean(l)
         
-        # 3. Aplicamos solo a la capa de Luminosidad (L)
+        # 3. Ajustar parámetros CLAHE dinámicamente según brillo
+        if brillo_promedio < 50:  # Muy oscuro
+            clipLimit = 4.0
+            tileGridSize = (4, 4)
+        elif brillo_promedio < 100:  # Oscuro
+            clipLimit = 3.0
+            tileGridSize = (6, 6)
+        else:  # Normal/Brillante
+            clipLimit = 2.5
+            tileGridSize = (8, 8)
+        
+        # 4. Creamos el objeto CLAHE con parámetros ajustados
+        clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+        
+        # 5. Aplicamos solo a la capa de Luminosidad (L)
         cl = clahe.apply(l)
 
-        # 4. Volvemos a fusionar los canales y regresar a BGR
+        # 6. Volvemos a fusionar los canales y regresar a BGR
         limg = cv2.merge((cl, a, b))
         return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 
     def identificar_persona(self, encoding_actual):
-        # 1. Validación de seguridad: ¿Hay encodings cargados?
-        if self.known_encodings is None or len(self.known_encodings) == 0:
-            return "Desconocido", 0.0
-
-        # 2. Asegurarse de que known_encodings sea un array de NumPy
-        # Esto es vital para que face_distance devuelva una lista de distancias
-        distancias = face_recognition.face_distance(self.known_encodings, encoding_actual)
-
-        # 3. Verificar si distancias es una lista/array (iterable)
-        if isinstance(distancias, np.ndarray) or isinstance(distancias, list):
-            if len(distancias) == 0:
-                return "Desconocido", 0.0
+        # Si tenemos encodings agrupados, usar estrategia de distancia promedio por persona
+        if self.encodings_agrupados and len(self.encodings_agrupados) > 0:
+            mejor_distancia = float('inf')
+            mejor_persona_id = None
+            mejor_nombre = "Desconocido"
+            
+            # Iterar sobre cada persona en la base de datos
+            for persona_id, encodings_lista in self.encodings_agrupados.items():
+                # Calcular distancias para los 3 perfiles de esta persona
+                if len(encodings_lista) == 0:
+                    continue
+                    
+                # Convertir a array numpy para face_distance
+                encodings_array = np.array(encodings_lista)
+                distancias = face_recognition.face_distance(encodings_array, encoding_actual)
                 
-            indice_mejor = np.argmin(distancias)
-            # Acceso seguro al índice
-            distancia_minima = distancias[indice_mejor]
+                # Calcular distancia promedio para esta persona
+                distancia_promedio = np.mean(distancias)
+                
+                # Mantener el mejor (menor distancia promedio)
+                if distancia_promedio < mejor_distancia:
+                    mejor_distancia = distancia_promedio
+                    mejor_persona_id = persona_id
+                    # Buscar el nombre correspondiente al ID
+                    if self.known_ids and persona_id in self.known_ids:
+                        idx = self.known_ids.index(persona_id)
+                        mejor_nombre = self.known_names[idx]
+            
+            # Cálculo de porcentaje basado en distancia promedio
+            porcentaje = (1 - mejor_distancia) * 100
+            
+            # Umbral estricto para 90% de similitud (distancia < 0.1)
+            if mejor_distancia < 0.1:
+                return f"{mejor_nombre} (ID: {mejor_persona_id})", porcentaje
+            
+            return "Desconocido", porcentaje
+            
         else:
-            # Si por alguna razón devolvió un solo número
-            distancia_minima = distancias
+            # Fallback: usar estructura plana antigua si no hay agrupada
+            if self.known_encodings is None or len(self.known_encodings) == 0:
+                return "Desconocido", 0.0
 
-        # 4. Cálculo de porcentaje
-        porcentaje = (1 - distancia_minima) * 100
-        
-        if distancia_minima < 0.6:
-            nombre = self.known_names[indice_mejor]
-            persona_id = self.known_ids[indice_mejor]
-            return f"{nombre} (ID: {persona_id})", porcentaje
-        
-        return "Desconocido", porcentaje
+            # Asegurarse de que known_encodings sea un array de NumPy
+            distancias = face_recognition.face_distance(self.known_encodings, encoding_actual)
+
+            # face_distance siempre devuelve un array, pero verificamos por seguridad
+            if isinstance(distancias, np.ndarray) and len(distancias) > 0:
+                indice_mejor = np.argmin(distancias)
+                distancia_minima = distancias[indice_mejor]
+            elif isinstance(distancias, list) and len(distancias) > 0:
+                indice_mejor = np.argmin(distancias)
+                distancia_minima = distancias[indice_mejor]
+            else:
+                return "Desconocido", 0.0
+
+            porcentaje = (1 - distancia_minima) * 100
+            
+            if distancia_minima < 0.6:
+                nombre = self.known_names[indice_mejor]
+                persona_id = self.known_ids[indice_mejor]
+                return f"{nombre} (ID: {persona_id})", porcentaje
+            
+            return "Desconocido", porcentaje
 
     def generarEnconding(self, frame):
         if frame is None:

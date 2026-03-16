@@ -35,15 +35,31 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         self.dbManager = DBManager()
         self.getPersonas = self.dbManager.getPersonas()
 
+        # Cargar los 3 encodings por persona y agruparlos
+        self.encodings_agrupados = {}
+        self.names = []
+        self.ids = []
+        
+        for p in self.getPersonas:
+            persona_id = p[0]
+            nombre = p[1]
+            encoding_izq = json.loads(p[3])
+            encoding_frente = json.loads(p[4])
+            encoding_der = json.loads(p[5])
+            
+            self.encodings_agrupados[persona_id] = [encoding_izq, encoding_frente, encoding_der]
+            self.names.append(nombre)
+            self.ids.append(persona_id)
+        
+        # Mantener compatibilidad con estructura plana (solo perfil izquierdo) para fallback
         self.encodings = [json.loads(p[3]) for p in self.getPersonas]
-        self.names = [p[1] for p in self.getPersonas]
-        self.ids = [p[0] for p in self.getPersonas]
 
         # Camera widget
         self.camera_widget = CameraRecognitionWidget(
             encodings_db=self.encodings,
             names_db=self.names,
-            ids_db=self.ids
+            ids_db=self.ids,
+            encodings_agrupados=self.encodings_agrupados
         )
         self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         cam_layout.addWidget(self.camera_widget, alignment=QtCore.Qt.AlignCenter)
