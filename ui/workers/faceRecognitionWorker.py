@@ -14,7 +14,12 @@ class FaceRecognitionWorker(QObject):
     def __init__(self, encodings_db, nombres_db, ids_db, encodings_agrupados=None, parent=None):
         super().__init__(parent)
         # Mantener compatibilidad con estructura plana si no se pasa agrupada
-        self.known_encodings = np.array(encodings_db) if encodings_db else np.array([])
+        # Verificamos si es una lista o un array de NumPy para evitar el error de "truth value"
+        if encodings_db is not None and len(encodings_db) > 0:
+            self.known_encodings = np.array(encodings_db)
+        else:
+            self.known_encodings = np.array([])
+            
         self.known_names = nombres_db
         self.known_ids = ids_db
         
@@ -261,17 +266,17 @@ class FaceRecognitionWorker(QObject):
         # --- LÓGICA DE ESTADOS ---
         # Frente: La nariz debe estar entre el 45% y 55% del ancho de la cara
         if 0.45 <= porcentaje_centro <= 0.55:
-            self.emitir_beep_rapido()
+            # self.emitir_beep_rapido()
             return "FRENTE", porcentaje_centro
         
         # Izquierda: La nariz se acerca al borde derecho (porcentaje alto > 0.65)
         elif porcentaje_centro > 0.65:
-            self.emitir_beep_rapido()
+            # self.emitir_beep_rapido()
             return "IZQUIERDA", porcentaje_centro
         
         # Derecha: La nariz se acerca al borde izquierdo (porcentaje bajo < 0.35)
         elif porcentaje_centro < 0.35:
-            self.emitir_beep_rapido()
+            # self.emitir_beep_rapido()
             return "DERECHA", porcentaje_centro
 
         return "MOVIÉNDOSE", porcentaje_centro
