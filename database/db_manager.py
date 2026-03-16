@@ -5,7 +5,7 @@ class DBManager:
 
     db_path = None
 
-    def __init__(self, db_path="database/bunny_detect.db"):
+    def __init__(self, db_path="database/bunny_detect_v2.db"):
         self.conn = sqlite3.connect(db_path)
         self.db_path = db_path
         self.cursor = self.conn.cursor()
@@ -52,7 +52,9 @@ class DBManager:
         "id_persona INTEGER PRIMARY KEY AUTOINCREMENT, " \
         "nombre_persona TEXT NOT NULL, " \
         "imagen TEXT NOT NULL, " \
-        "encodes TEXT NOT NULL, " \
+        "encoding_perfil_izquierdo TEXT NOT NULL, " \
+        "encoding_frente TEXT NOT NULL, " \
+        "encoding_perfil_derecho TEXT NOT NULL, " \
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
 
@@ -69,7 +71,9 @@ class DBManager:
         "id_persona INTEGER PRIMARY KEY AUTOINCREMENT, " \
         "nombre_persona TEXT NOT NULL, " \
         "imagen TEXT NOT NULL, " \
-        "encodes TEXT NOT NULL, " \
+        "encoding_perfil_izquierdo TEXT NOT NULL, " \
+        "encoding_frente TEXT NOT NULL, " \
+        "encoding_perfil_derecho TEXT NOT NULL, " \
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
 
@@ -103,14 +107,20 @@ class DBManager:
         self.conn.commit()
         self.conn.close()
 
-    def guardarPersonaData(self, nombre_persona, imagen, encodes):
+    def guardarPersonaData(self, 
+                           nombre_persona, 
+                           imagen, 
+                           encoding_frente, 
+                           encoding_perfil_derecho, 
+                           encoding_perfil_izquierdo
+                           ):
 
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        data = (nombre_persona, imagen, encodes, 1, datetime.now().isoformat())
+        data = (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, 1, datetime.now().isoformat())
 
-        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encodes, estatus, created_at) VALUES (?, ?, ?, ?, ?)", data)
+        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, estatus, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", data)
 
         self.conn.commit()
         self.conn.close()

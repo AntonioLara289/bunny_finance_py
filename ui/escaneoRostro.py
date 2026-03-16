@@ -2,11 +2,9 @@ from PySide6 import QtWidgets
 from PySide6.QtWidgets import (
     QPushButton,
     QLabel,
-    QLineEdit,
     QScrollArea,
     QWidget,
     QDialog,
-    QVBoxLayout,
     QHBoxLayout
 )
 from PySide6.QtGui import (
@@ -15,7 +13,6 @@ from PySide6.QtGui import (
     QGuiApplication,
 )
 from PySide6.QtCore import (
-    QTimer,
     Qt,
     QThread
 )
@@ -40,16 +37,16 @@ class EscanerRostro(QtWidgets.QWidget):
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(QtWidgets.QLabel("Soy la pantalla de escaner"))
 
-        self.encoding_foto_capturada = None
-        self.encodings_db = list()
-        self.nombres_personas_db = list()
-        self.ids_personas_db = list()
-        self.ids_personas_indetificadas = list()
+        # self.encoding_foto_capturada = None
+        self.encodings_db = []
+        self.nombres_personas_db = []
+        self.ids_personas_db = []
+        # self.ids_personas_indetificadas = list()
         self.cantidad_fotos = 0
         self.fotografias = {}
 
         self.dbManager = DBManager()
-        self.cargarDatosPersonas()
+        # self.cargarDatosPersonas()
 
         # Add your content (e.g., many QLabels) to content_layout
         #ESTO AGREGA SOLO 20 Items para el apartado del scroll pero fue destacado por la ventana modal
@@ -624,8 +621,10 @@ class EscanerRostro(QtWidgets.QWidget):
                     data= self.fotografias[1]["pixmap"], 
                     #mandamos todas las fotos en crudo
                     imagenes=self.obtenerFotografias(), 
-                    #mandamos los encodings generados en promedio
-                    encodigns=self.generarEncodingPromedio()
+                    #mandamos los encodings
+                    encoding_frente= self.generarEncodingPro(self.fotografias[1]["data"]),
+                    encoding_perfil_derecho= self.generarEncodingPro(self.fotografias[2]["data"]),
+                    encoding_perfil_izquierdo= self.generarEncodingPro(self.fotografias[0]["data"])
                 )
                 # self.modal.show()
                 self.resultado = self.modal.exec()
@@ -680,32 +679,39 @@ class EscanerRostro(QtWidgets.QWidget):
 
     def cargarDatosPersonas(self):
 
+        self.encodings_db = []
+        self.nombres_personas_db = []
+        self.ids_personas_db = []
+
         self.getPersonas = self.dbManager.getPersonas()
 
         for persona in self.getPersonas:
-
-            # En Python, no se utiliza el nombre del atributo del array/objeto al que quieres acceder, sino que se 
-            # utilizan los numeros.
+            # 1. Cargamos los 3 encodings
+            izq = json.loads(persona[3])
+            fre = json.loads(persona[4])
+            der = json.loads(persona[5])
             
-            # Encodings
-            self.encodings_db.append(json.loads(persona[3]))
-            # Nombres
-            self.nombres_personas_db.append(persona[1])
-            # Ids
-            self.ids_personas_db.append(persona[0])
+            # 2. USAR EXTEND en lugar de append con corchetes
+            # Extend añade los elementos de la lista uno por uno al nivel principal
+            self.encodings_db.extend([izq, fre, der])
+            
+            # 3. Hacemos lo mismo con nombres e IDs para que los índices coincidan
+            self.nombres_personas_db.extend([persona[1], persona[1], persona[1]])
+            self.ids_personas_db.extend([persona[0], persona[0], persona[0]])
 
-            print(f"{json.loads(persona[3])}")
+        # MUY IMPORTANTE: Convertir a array de Numpy al final para el Worker
+        self.encodings_db = np.array(self.encodings_db)
+        
+        print(f"Base de datos cargada. Total de vectores: {len(self.encodings_db)}")
+        print(f"Forma del array (debe ser N, 128): {self.encodings_db.shape}")
 
-        print('self.encodings_db: ', type(self.encodings_db))
-        print('self.getPersonas: ', self.getPersonas)
-
-    def onDestroy(self, event):
-        print("Cerrando escaneo de rostro")
-        # Esto sirve para al momento de cambiar la pantalla desde el menú, debemos liberar la cámara y que no 
-        # sigan los procesos que no son terminados al cambiar de pantalla y que afectan al sistema
-        if self.cap.isOpened():
-            self.cap.release()
-        event.accept()
+    # def onDestroy(self, event):
+    #     print("Cerrando escaneo de rostro")
+    #     # Esto sirve para al momento de cambiar la pantalla desde el menú, debemos liberar la cámara y que no 
+    #     # sigan los procesos que no son terminados al cambiar de pantalla y que afectan al sistema
+    #     if self.cap.isOpened():
+    #         self.cap.release()
+    #     event.accept()
     # def abrirModalFotoCapturada(self):
 
     def obtenerEncodingsDeFotos(self):
@@ -897,3 +903,43 @@ class EscanerRostro(QtWidgets.QWidget):
         """Alterna pausa con un solo botón"""
         if hasattr(self, 'cam_worker'):
             self.cam_worker.alternarEstado()
+
+    def generarEnconding(self, frame):
+        
+        if frame is None:
+            return ("la foto no tiene datos")
+
+        # Convertir a RGB
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Detectar rostro
+        locations = face_recognition.face_locations(rgb)
+
+        if len(locations) == 0:
+            return("No se detectó rostro en la foto") 
+
+        # Obtener encoding
+        return face_recognition.face_encodings(rgb, locations)[0]
+
+    # Al momento de registrar a la persona en tu modal:
+    def generarEncodingPro(self, imagen_cv2):
+        # Convertir a RGB
+        rgb = cv2.cvtColor(imagen_cv2, cv2.COLOR_BGR2RGB)
+        
+        # Localizar la cara
+        boxes = face_recognition.face_locations(rgb, model="hog")
+        
+        if not boxes:
+            return None
+
+        # AQUÍ ESTÁ EL REMUESTREO:
+        # num_jitters=100 es el estándar de alta precisión. 
+        # Hará que el encoding sea mucho más estable.
+        encoding = face_recognition.face_encodings(
+            rgb, 
+            known_face_locations=boxes, 
+            num_jitters=100, 
+            model="large"
+        )[0]
+        
+        return encoding

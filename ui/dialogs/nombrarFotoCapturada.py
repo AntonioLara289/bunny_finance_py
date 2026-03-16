@@ -14,7 +14,14 @@ import json
 
 class NombrarFotoCapturada(QDialog):
 
-    def __init__(self, parent = None, data = None, imagenes = None, encodigns = None):
+    def __init__(self, 
+                 parent = None, 
+                 data = None, 
+                 imagenes = None, 
+                 encoding_frente = None, 
+                 encoding_perfil_derecho = None,
+                 encoding_perfil_izquierdo = None
+                 ):
 ##
         super(NombrarFotoCapturada, self).__init__(parent)
 
@@ -22,7 +29,11 @@ class NombrarFotoCapturada(QDialog):
 
         self.data = data
         self.imagenes = imagenes
-        self.encodings = encodigns
+        self.encodings = {
+            "encoding_frente": encoding_frente,
+            "encoding_derecho": encoding_perfil_derecho,
+            "encoding_izquierdo": encoding_perfil_izquierdo 
+        }
         
         self.dbManager = DBManager()
 
@@ -130,9 +141,17 @@ class NombrarFotoCapturada(QDialog):
 
             # encoding_array = self.encodings        # Esto sí es NumPy array
             # encoding_list = encoding_array.tolist()   # Ahora sí puedes convertir a lista
-            encoding_json = json.dumps(self.encodings)
+            # encoding_json = json.dumps(self.encodings)
+            json_frente = json.dumps(self.encodings["encoding_frente"].tolist())
+            json_izq = json.dumps(self.encodings["encoding_izquierdo"].tolist())
+            json_der = json.dumps(self.encodings["encoding_derecho"].tolist())
 
-            self.dbManager.guardarPersonaData(self.nombre_imagen.text(), self.nombre_imagen.text() + '.png', encoding_json)
+            self.dbManager.guardarPersonaData(
+                self.nombre_imagen.text(), 
+                self.nombre_imagen.text() + '.png',
+                json_frente,
+                json_izq,
+                json_der)
 
             output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
             #print('output_path: ', output_path)
