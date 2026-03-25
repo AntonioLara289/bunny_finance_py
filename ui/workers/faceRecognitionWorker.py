@@ -62,8 +62,8 @@ class FaceRecognitionWorker(QObject):
             # Reducir a un tamaño estándar (ej. 1/2 del original)
             # pequeno = cv2.resize(rgb_frame, (0, 0), fx=0.5, fy=0.5)
 
-            face_locations = face_recognition.face_locations(rgb_frame, model="hog")
-            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, model="large")
+            face_locations = face_recognition.face_locations(rgb_frame, model="cnn")
+            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=50, model="large")
             
             # 2. Obtener los landmarks (puntos de referencia)
             # Esto devuelve una lista de diccionarios (uno por cada cara detectada)
@@ -153,7 +153,7 @@ class FaceRecognitionWorker(QObject):
         # 4. Cálculo de porcentaje
         porcentaje = (1 - distancia_minima) * 100
         
-        if distancia_minima < 0.6:
+        if distancia_minima < 0.4:
             nombre = self.known_names[indice_mejor]
             persona_id = self.known_ids[indice_mejor]
             return f"{nombre} (ID: {persona_id})", porcentaje
@@ -229,17 +229,17 @@ class FaceRecognitionWorker(QObject):
         # --- LÓGICA DE ESTADOS ---
         # Frente: La nariz debe estar entre el 45% y 55% del ancho de la cara
         if 0.45 <= porcentaje_centro <= 0.55:
-            self.emitir_beep_rapido()
+            # self.emitir_beep_rapido()
             return "FRENTE", porcentaje_centro
         
         # Izquierda: La nariz se acerca al borde derecho (porcentaje alto > 0.65)
         elif porcentaje_centro > 0.65:
-            self.emitir_beep_rapido()
+            # self.emitir_beep_rapido()
             return "IZQUIERDA", porcentaje_centro
         
         # Derecha: La nariz se acerca al borde izquierdo (porcentaje bajo < 0.35)
         elif porcentaje_centro < 0.35:
-            self.emitir_beep_rapido()
+            # self.emitir_beep_rapido()
             return "DERECHA", porcentaje_centro
 
         return "MOVIÉNDOSE", porcentaje_centro

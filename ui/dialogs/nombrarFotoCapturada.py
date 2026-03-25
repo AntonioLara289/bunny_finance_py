@@ -3,11 +3,13 @@ from PySide6.QtWidgets import (
     QDialog,
     QLabel,
     QLineEdit,
-    QPushButton
+    QPushButton,
+    QMessageBox
 ) 
 from PySide6.QtCore import Qt
 import os
 import cv2
+import numpy as np
 from database.db_manager import DBManager
 import face_recognition
 import json
@@ -117,34 +119,56 @@ class NombrarFotoCapturada(QDialog):
 
         self.boton_guardar_foto.setEnabled(False)
 
-        #print("Guardando foto")
-
-        #print('self.nombre_imagen.text(): ', self.nombre_imagen.text())
         if self.nombre_imagen.text() != "":
 
             if not os.path.exists(self.directorio_customizado):
-
                 os.makedirs(self.directorio_customizado)
 
-                #print(f"Directory '{self.directorio_customizado}' created.")
-
-            # Define the full path for saving the image
-            # os.path.join handles path concatenation correctly across different operating systems
-            # Suponiendo que self.encodings = face_recognition.face_encodings(frame)
-
-            # #print('self.encodings: ', self.encodings)
-
-            #print('self.encodings: ', self.encodings)
-            
             if len(self.encodings) == 0:
                 raise ValueError("No se detectó ninguna cara en la imagen")
 
-            # encoding_array = self.encodings        # Esto sí es NumPy array
-            # encoding_list = encoding_array.tolist()   # Ahora sí puedes convertir a lista
-            # encoding_json = json.dumps(self.encodings)
-            json_frente = json.dumps(self.encodings["encoding_frente"].tolist())
-            json_izq = json.dumps(self.encodings["encoding_izquierdo"].tolist())
-            json_der = json.dumps(self.encodings["encoding_derecho"].tolist())
+            encoding_frente = self.encodings["encoding_frente"]
+            encoding_izq = self.encodings["encoding_izquierdo"]
+            encoding_der = self.encodings["encoding_derecho"]
+
+            encoding_promedio = np.mean([encoding_frente, encoding_izq, encoding_der], axis=0)
+
+            personas_db = self.dbManager.getPersonas()
+            
+            if len(personas_db) > 0:
+                encodings_db = []
+                nombres_db = []
+                
+                for persona in personas_db:
+                    encodings_db.append(json.loads(persona[3]))
+                    nombres_db.append(persona[1])
+                
+                encodings_db = np.array(encodings_db)
+                
+                distancias = face_recognition.face_distance(encodings_db, encoding_promedio)
+                
+                if len(distancias) > 0:
+                    indice_max = np.argmin(distancias)
+                    distancia_minima = distancias[indice_max]
+                    similitud_max = (1 - distancia_minima) * 100
+                    nombre_similar = nombres_db[indice_max]
+                    
+                    umbral_similitud = 80.0
+                    
+                    if similitud_max > umbral_similitud:
+                        respuesta = QMessageBox.warning(
+                            self,
+                            "Persona Similar Detectada",
+                            f"Esta persona tiene {similitud_max:.1f}% de similitud con '{nombre_similar}'.\n\n¿Desea registrarla de todas formas?",
+                            QMessageBox.Yes | QMessageBox.No
+                        )
+                        if respuesta == QMessageBox.No:
+                            self.boton_guardar_foto.setEnabled(True)
+                            return
+
+            json_frente = json.dumps(encoding_frente.tolist())
+            json_izq = json.dumps(encoding_izq.tolist())
+            json_der = json.dumps(encoding_der.tolist())
 
             self.dbManager.guardarPersonaData(
                 self.nombre_imagen.text(), 
@@ -154,26 +178,14 @@ class NombrarFotoCapturada(QDialog):
                 json_der)
 
             output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
-            #print('output_path: ', output_path)
-
-            # Save the image to the specified custom directory
 
             for imagen in self.imagenes:
-
                 try:
                     cv2.imwrite(output_path, imagen)
-                    
                 except TypeError:
                     print("Error al guardar:", TypeError)
-                
 
             self.accept()
-
-            #print("Foto guardada")
-
-        else:
-            pass
-            #print("No tiene nombre")
 
         self.boton_guardar_foto.setEnabled(True)
         
