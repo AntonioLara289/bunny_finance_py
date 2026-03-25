@@ -216,6 +216,19 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_cerrar_camara.show()
         self.cargarDatosPersonas() # Carga datos de la DB
 
+        # Agregar etiqueta de instrucciones
+        if not hasattr(self, 'instrucciones_label'):
+            self.instrucciones_label = QtWidgets.QLabel(
+                "Capture 5 perfiles: \n"
+                "1. Perfil izquierdo\n"
+                "2. Izquierdo-frente\n"
+                "3. Frente\n"
+                "4. Derecho-frente\n"
+                "5. Perfil derecho"
+            )
+            self.instrucciones_label.setStyleSheet("font-size: 12px; color: #333; background-color: #f0f0f0; padding: 5px;")
+            self.layout.addWidget(self.instrucciones_label)
+
         self.iniciarCamaraWorker()
 
     def iniciarCamaraWorker(self):
@@ -600,11 +613,12 @@ class EscanerRostro(QtWidgets.QWidget):
                 pixmap_label = self.convertirFrameALabel(frame=frame)
                 pixmap = self.convertirFrameAPixmap(frame=frame)
                 
-                if self.cantidad_fotos < 3:
+                # Capturar 5 perfiles por persona para mayor robustez
+                if self.cantidad_fotos < 5:
 
                     self.almacenarFotos(pixmap_label=pixmap_label, pixmap=pixmap, frame=frame)
 
-                    if self.cantidad_fotos < 3:
+                    if self.cantidad_fotos < 5:
                         return
 
                 self.botonGuardarFotoCambiarTexto(cambiar=1)
@@ -615,16 +629,19 @@ class EscanerRostro(QtWidgets.QWidget):
                 # qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
                 # pixmap = QPixmap.fromImage(qimg)
                 
+                # Para 5 perfiles, el orden es: 0=izq, 1=izq-frente, 2=frente, 3=der-frente, 4=der
                 self.modal = NombrarFotoCapturada(
                     self, 
-                    #mandamos la foto que se mostrara en el modal
-                    data= self.fotografias[1]["pixmap"], 
+                    #mandamos la foto que se mostrara en el modal (frente)
+                    data= self.fotografias[2]["pixmap"], 
                     #mandamos todas las fotos en crudo
                     imagenes=self.obtenerFotografias(), 
                     #mandamos los encodings
-                    encoding_frente= self.generarEncodingPro(self.fotografias[1]["data"]),
-                    encoding_perfil_derecho= self.generarEncodingPro(self.fotografias[2]["data"]),
-                    encoding_perfil_izquierdo= self.generarEncodingPro(self.fotografias[0]["data"])
+                    encoding_frente= self.generarEncodingPro(self.fotografias[2]["data"]),
+                    encoding_perfil_derecho= self.generarEncodingPro(self.fotografias[4]["data"]),
+                    encoding_perfil_izquierdo= self.generarEncodingPro(self.fotografias[0]["data"]),
+                    encoding_izquierdo_frente= self.generarEncodingPro(self.fotografias[1]["data"]),
+                    encoding_derecho_frente= self.generarEncodingPro(self.fotografias[3]["data"])
                 )
                 # self.modal.show()
                 self.resultado = self.modal.exec()
@@ -683,30 +700,44 @@ class EscanerRostro(QtWidgets.QWidget):
         self.nombres_personas_db = []
         self.ids_personas_db = []
         
-        # Nueva estructura: diccionario {id_persona: [encoding_izq, encoding_frente, encoding_der]}
+        # Nueva estructura: diccionario {id_persona: [encoding_izq, encoding_frente, encoding_der, encoding_izq_frente, encoding_der_frente]}
         self.encodings_agrupados = {}
 
         self.getPersonas = self.dbManager.getPersonas()
 
         for persona in self.getPersonas:
-            # 1. Cargamos los 3 encodings
-            izq = json.loads(persona[3])
-            fre = json.loads(persona[4])
-            der = json.loads(persona[5])
-            
-            # 2. USAR EXTEND en lugar de append con corchetes (mantener compatibilidad temporal)
-            # Extend añade los elementos de la lista uno por uno al nivel principal
-            self.encodings_db.extend([izq, fre, der])
-            
-            # 3. Hacemos lo mismo con nombres e IDs para que los índices coincidan
-            self.nombres_personas_db.extend([persona[1], persona[1], persona[1]])
-            self.ids_personas_db.extend([persona[0], persona[0], persona[0]])
-            
-            # 4. Nueva estructura agrupada
-            self.encodings_agrupados[persona[0]] = [izq, fre, der]
+            # 1. Cargamos los 5 encodings (manejo retrocompatible)
+            try:
+                izq = json.loads(persona[3]) if persona[3] else []
+                fre = json.loads(persona[4]) if persona[4] else []
+                der = json.loads(persona[5]) if persona[5] else []
+                
+                # Nuevos encodings (pueden ser None en la BD antigua)
+                izq_frente = json.loads(persona[6]) if len(persona) > 6 and persona[6] else []
+                der_frente = json.loads(persona[7]) if len(persona) > 7 and persona[7] else []
+                
+                # Filtrar encodings vacíos
+                encodings_lista = [e for e in [izq, fre, der, izq_frente, der_frente] if e]
+                
+                if not encodings_lista:
+                    continue
+                
+                # 2. USAR EXTEND en lugar de append con corchetes
+                self.encodings_db.extend(encodings_lista)
+                
+                # 3. Hacemos lo mismo con nombres e IDs para que los índices coincidan
+                self.nombres_personas_db.extend([persona[1]] * len(encodings_lista))
+                self.ids_personas_db.extend([persona[0]] * len(encodings_lista))
+                
+                # 4. Nueva estructura agrupada
+                self.encodings_agrupados[persona[0]] = encodings_lista
+                
+            except (json.JSONDecodeError, IndexError) as e:
+                print(f"Error cargando persona {persona[0]}: {e}")
+                continue
 
         # MUY IMPORTANTE: Convertir a array de Numpy al final para el Worker
-        self.encodings_db = np.array(self.encodings_db)
+        self.encodings_db = np.array(self.encodings_db) if self.encodings_db else np.array([])
         
         print(f"Base de datos cargada. Total de vectores: {len(self.encodings_db)}")
         print(f"Forma del array (debe ser N, 128): {self.encodings_db.shape}")
@@ -740,8 +771,13 @@ class EscanerRostro(QtWidgets.QWidget):
                 print(f"No se detectó rostro en la foto {idx}")
                 continue
 
-            # Obtener encoding
-            encoding = face_recognition.face_encodings(rgb, locations)[0]
+            # Obtener encoding con num_jitters=100 y model="large" para consistencia
+            encoding = face_recognition.face_encodings(
+                rgb, 
+                known_face_locations=locations, 
+                num_jitters=100, 
+                model="large"
+            )[0]
             encodings.append(encoding)
 
         return encodings

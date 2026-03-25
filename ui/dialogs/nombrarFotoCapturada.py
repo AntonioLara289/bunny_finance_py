@@ -20,7 +20,9 @@ class NombrarFotoCapturada(QDialog):
                  imagenes = None, 
                  encoding_frente = None, 
                  encoding_perfil_derecho = None,
-                 encoding_perfil_izquierdo = None
+                 encoding_perfil_izquierdo = None,
+                 encoding_izquierdo_frente = None,
+                 encoding_derecho_frente = None
                  ):
 ##
         super(NombrarFotoCapturada, self).__init__(parent)
@@ -32,7 +34,9 @@ class NombrarFotoCapturada(QDialog):
         self.encodings = {
             "encoding_frente": encoding_frente,
             "encoding_derecho": encoding_perfil_derecho,
-            "encoding_izquierdo": encoding_perfil_izquierdo 
+            "encoding_izquierdo": encoding_perfil_izquierdo,
+            "encoding_izquierdo_frente": encoding_izquierdo_frente,
+            "encoding_derecho_frente": encoding_derecho_frente
         }
         
         self.dbManager = DBManager()
@@ -142,16 +146,23 @@ class NombrarFotoCapturada(QDialog):
             # encoding_array = self.encodings        # Esto sí es NumPy array
             # encoding_list = encoding_array.tolist()   # Ahora sí puedes convertir a lista
             # encoding_json = json.dumps(self.encodings)
+            # Convertir encodings a JSON
             json_frente = json.dumps(self.encodings["encoding_frente"].tolist())
             json_izq = json.dumps(self.encodings["encoding_izquierdo"].tolist())
             json_der = json.dumps(self.encodings["encoding_derecho"].tolist())
+            
+            # Nuevos encodings (pueden ser None)
+            json_izq_frente = json.dumps(self.encodings["encoding_izquierdo_frente"].tolist()) if self.encodings["encoding_izquierdo_frente"] is not None else None
+            json_der_frente = json.dumps(self.encodings["encoding_derecho_frente"].tolist()) if self.encodings["encoding_derecho_frente"] is not None else None
 
             self.dbManager.guardarPersonaData(
                 self.nombre_imagen.text(), 
                 self.nombre_imagen.text() + '.png',
                 json_frente,
                 json_izq,
-                json_der)
+                json_der,
+                json_izq_frente,
+                json_der_frente)
 
             output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
             #print('output_path: ', output_path)

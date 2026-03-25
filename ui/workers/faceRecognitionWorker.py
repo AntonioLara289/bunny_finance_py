@@ -61,14 +61,7 @@ class FaceRecognitionWorker(QObject):
             # face_landmarks_list = face_recognition.face_landmarks(rgb_frame, face_locations)
             self.obtenerAnguloGiro(face_recognition.face_landmarks(rgb_frame, face_locations))
             current_face_names = []
-            current_face_colors = []            # Normalizar encodings conocidos para similitud coseno
-            if self.known_encodings is not None and len(self.known_encodings) > 0:
-                # Evita división por cero
-                norms = np.linalg.norm(self.known_encodings, axis=1, keepdims=True)
-                norms[norms == 0] = 1.0
-                self.known_encodings_norm = self.known_encodings / norms
-            else:
-                self.known_encodings_norm = None
+            current_face_colors = []
             
             for encoding in face_encodings:
                 nombre, porcentaje = self.identificar_persona(encoding)
@@ -135,6 +128,9 @@ class FaceRecognitionWorker(QObject):
     def identificar_persona(self, encoding_actual):
         # Si tenemos encodings agrupados, usar estrategia de distancia promedio por persona
         if self.encodings_agrupados and len(self.encodings_agrupados) > 0:
+            # DEBUG: Imprimir que se usa la rama agrupada
+            print("Usando rama agrupada para identificación")
+            
             mejor_distancia = float('inf')
             mejor_persona_id = None
             mejor_nombre = "Desconocido"
@@ -149,29 +145,40 @@ class FaceRecognitionWorker(QObject):
                 encodings_array = np.array(encodings_lista)
                 distancias = face_recognition.face_distance(encodings_array, encoding_actual)
                 
-                # Calcular distancia promedio para esta persona
-                distancia_promedio = np.mean(distancias)
+                # DEBUG: Imprimir distancias individuales
+                print(f"Persona {persona_id}: distancias individuales = {distancias}")
                 
-                # Mantener el mejor (menor distancia promedio)
-                if distancia_promedio < mejor_distancia:
-                    mejor_distancia = distancia_promedio
+                # Encontrar la mejor distancia individual para esta persona
+                distancia_minima_persona = np.min(distancias)
+                
+                # DEBUG: Imprimir distancia mínima para cada persona
+                print(f"Persona {persona_id}: distancia mínima = {distancia_minima_persona:.4f}")
+                
+                # Mantener el mejor (menor distancia mínima)
+                if distancia_minima_persona < mejor_distancia:
+                    mejor_distancia = distancia_minima_persona
                     mejor_persona_id = persona_id
                     # Buscar el nombre correspondiente al ID
                     if self.known_ids and persona_id in self.known_ids:
                         idx = self.known_ids.index(persona_id)
                         mejor_nombre = self.known_names[idx]
             
-            # Cálculo de porcentaje basado en distancia promedio
+            # Cálculo de porcentaje basado en mejor distancia individual
             porcentaje = (1 - mejor_distancia) * 100
             
+            # DEBUG: Imprimir mejor distancia y porcentaje
+            print(f"Mejor distancia: {mejor_distancia:.4f}, Porcentaje: {porcentaje:.1f}%")
+            
             # Umbral estricto para 90% de similitud (distancia < 0.1)
-            if mejor_distancia < 0.1:
+            if mejor_distancia < 0.3:
                 return f"{mejor_nombre} (ID: {mejor_persona_id})", porcentaje
             
             return "Desconocido", porcentaje
             
         else:
             # Fallback: usar estructura plana antigua si no hay agrupada
+            print("Usando rama plana para identificación")
+            
             if self.known_encodings is None or len(self.known_encodings) == 0:
                 return "Desconocido", 0.0
 
@@ -190,7 +197,11 @@ class FaceRecognitionWorker(QObject):
 
             porcentaje = (1 - distancia_minima) * 100
             
-            if distancia_minima < 0.6:
+            # DEBUG: Imprimir distancia mínima y porcentaje
+            print(f"Distancia mínima: {distancia_minima:.4f}, Porcentaje: {porcentaje:.1f}%")
+            
+            # Umbral estricto para 90% de similitud (distancia < 0.1)
+            if distancia_minima < 0.1:
                 nombre = self.known_names[indice_mejor]
                 persona_id = self.known_ids[indice_mejor]
                 return f"{nombre} (ID: {persona_id})", porcentaje

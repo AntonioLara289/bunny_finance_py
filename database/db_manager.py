@@ -55,6 +55,8 @@ class DBManager:
         "encoding_perfil_izquierdo TEXT NOT NULL, " \
         "encoding_frente TEXT NOT NULL, " \
         "encoding_perfil_derecho TEXT NOT NULL, " \
+        "encoding_izquierdo_frente TEXT, " \
+        "encoding_derecho_frente TEXT, " \
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
 
@@ -74,8 +76,21 @@ class DBManager:
         "encoding_perfil_izquierdo TEXT NOT NULL, " \
         "encoding_frente TEXT NOT NULL, " \
         "encoding_perfil_derecho TEXT NOT NULL, " \
+        "encoding_izquierdo_frente TEXT, " \
+        "encoding_derecho_frente TEXT, " \
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
+
+        # Agregar columnas si no existen (para retrocompatibilidad)
+        try:
+            self.cursor.execute("ALTER TABLE personas ADD COLUMN encoding_izquierdo_frente TEXT")
+        except sqlite3.OperationalError:
+            pass
+        
+        try:
+            self.cursor.execute("ALTER TABLE personas ADD COLUMN encoding_derecho_frente TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         self.cursor.execute("SELECT * FROM personas where estatus = 1")
         filas = self.cursor.fetchall()
@@ -112,15 +127,17 @@ class DBManager:
                            imagen, 
                            encoding_frente, 
                            encoding_perfil_derecho, 
-                           encoding_perfil_izquierdo
+                           encoding_perfil_izquierdo,
+                           encoding_izquierdo_frente=None,
+                           encoding_derecho_frente=None
                            ):
 
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        data = (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, 1, datetime.now().isoformat())
+        data = (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, encoding_izquierdo_frente, encoding_derecho_frente, 1, datetime.now().isoformat())
 
-        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, estatus, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", data)
+        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, encoding_izquierdo_frente, encoding_derecho_frente, estatus, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 
         self.conn.commit()
         self.conn.close()
