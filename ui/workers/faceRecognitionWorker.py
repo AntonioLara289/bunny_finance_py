@@ -10,6 +10,7 @@ import os
 class FaceRecognitionWorker(QObject):
     frame_processed = Signal(np.ndarray)
     finished = Signal()
+    persona_confirmada = Signal(str, int, float)
 
     def __init__(self, encodings_db, nombres_db, ids_db, parent=None):
         super().__init__(parent)
@@ -18,88 +19,72 @@ class FaceRecognitionWorker(QObject):
         self.known_ids = ids_db
         
         self.frame_counter = 0
-        self.skip_frames = 5  
+        self.skip_frames = 3
         
         self.last_face_locations = []
         self.last_face_names = []
         self.last_face_colors = []
-        self._running = True # Bandera para detener el worker
+        self._running = True
+
+        self.confirmaciones = {}
+        self.confirmaciones_necesarias = 2
+        self.frame_sin_deteccion = 0
+        self.max_frames_sin_deteccion = 10
+        self.frame_para_confirmacion = None
 
     def process_frame(self, frame):
         if frame is None or not self._running:
             return
 
-        # frame_equilibrado = self.aplicar_clahe(frame)
-
-        # small_frame = cv2.resize(frame_equilibrado, (0, 0), fx=0.5, fy=0.5)
-        # rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
-
-        #     # --- MEJORA DE LUZ ---
-        # # Convertimos a espacio de color LAB para ajustar solo el brillo (L)
-        # lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-        # l, a, b = cv2.split(lab)
-        
-        # # Aplicamos CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        # cl = clahe.apply(l)
-        
-        # # Fusionamos y volvemos a BGR
-        # limg = cv2.merge((cl,a,b))
-        # frame_mejorado = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-        # # ---------------------
-
-        # rgb_frame = cv2.cvtColor(frame_mejorado, cv2.COLOR_BGR2RGB)
-        # ... resto de tu lógica de detección
-
-        # Redimensionar para procesar más rápido (opcional pero recomendado)
-        # small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
         rgb_frame_clah = self.aplicar_clahe(frame)
         rgb_frame = cv2.cvtColor(rgb_frame_clah, cv2.COLOR_BGR2RGB)
 
         if self.frame_counter % self.skip_frames == 0:
-            # Detección de rostros
-            # Dentro de process_frame, después de convertir a RGB:
-            # Reducir a un tamaño estándar (ej. 1/2 del original)
-            # pequeno = cv2.resize(rgb_frame, (0, 0), fx=0.5, fy=0.5)
-
-            face_locations = face_recognition.face_locations(rgb_frame, model="cnn")
-            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=50, model="large")
+            face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=1, model="large")
             
-            # 2. Obtener los landmarks (puntos de referencia)
-            # Esto devuelve una lista de diccionarios (uno por cada cara detectada)
-            # face_landmarks_list = face_recognition.face_landmarks(rgb_frame, face_locations)
-            self.obtenerAnguloGiro(face_recognition.face_landmarks(rgb_frame, face_locations))
             current_face_names = []
-            current_face_colors = []            # Normalizar encodings conocidos para similitud coseno
-            if self.known_encodings is not None and len(self.known_encodings) > 0:
-                # Evita división por cero
-                norms = np.linalg.norm(self.known_encodings, axis=1, keepdims=True)
-                norms[norms == 0] = 1.0
-                self.known_encodings_norm = self.known_encodings / norms
-            else:
-                self.known_encodings_norm = None
-            
-            for encoding in face_encodings:
-                nombre, porcentaje = self.identificar_persona(encoding)
-                print('porcentaje parentezco: ', porcentaje)
-                
-                # Definir color basado en si es conocido o no
-                if nombre != "Desconocido":
-                    color = (0, 255, 0) # Verde
-                    label = f"{nombre} ({porcentaje:.1f}%)"
-                else:
-                    color = (255, 0, 0) # Rojo
-                    label = "Desconocido"
-                    
-                current_face_names.append(label)
-                current_face_colors.append(color)
+            current_face_colors = []
 
-            self.last_face_locations = face_locations
-            self.last_face_names = current_face_names
-            self.last_face_colors = current_face_colors
+            if len(face_locations) > 0:
+                self.frame_sin_deteccion = 0
+                
+                for i, encoding in enumerate(face_encodings):
+                    nombre, porcentaje, persona_id = self.identificar_persona_rapida(encoding)
+                    loc = face_locations[i]
+                    
+                    if persona_id is not None:
+                        if persona_id not in self.confirmaciones:
+                            self.confirmaciones[persona_id] = {"count": 0, "similarities": []}
+                        
+                        self.confirmaciones[persona_id]["count"] += 1
+                        self.confirmaciones[persona_id]["similarities"].append(porcentaje)
+                        
+                        if self.confirmaciones[persona_id]["count"] >= self.confirmaciones_necesarias:
+                            if self.confirmaciones[persona_id]["count"] == self.confirmaciones_necesarias:
+                                similitud_confirmada = self.confirmar_con_encoding_pesado(rgb_frame, loc, persona_id)
+                                if similitud_confirmada is not None:
+                                    print(f"PERSONA CONFIRMADA: {nombre} - {similitud_confirmada:.1f}%")
+                                    self.persona_confirmada.emit(nombre, persona_id, similitud_confirmada)
+                                self.confirmaciones[persona_id]["count"] += 1
+                        
+                        color = (0, 255, 0)
+                        label = f"{nombre} ({porcentaje:.1f}%)"
+                    else:
+                        color = (255, 0, 0)
+                        label = "Desconocido"
+                        if persona_id in self.confirmaciones:
+                            del self.confirmaciones[persona_id]
+                    
+                    current_face_names.append(label)
+                    current_face_colors.append(color)
+
+                self.last_face_locations = face_locations
+            else:
+                self.frame_sin_deteccion += 1
+                if self.frame_sin_deteccion >= self.max_frames_sin_deteccion:
+                    self.confirmaciones.clear()
         
-        # Dibujar (Zona Rápida)
-        # Importante: convertimos de vuelta a BGR para que la UI de OpenCV/Qt lo vea bien
         output_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
         
         for loc, name, color in zip(self.last_face_locations, self.last_face_names, self.last_face_colors):
@@ -111,21 +96,46 @@ class FaceRecognitionWorker(QObject):
         self.frame_counter += 1
         self.frame_processed.emit(output_frame)
 
+    def confirmar_con_encoding_pesado(self, rgb_frame, face_location, persona_id):
+        encoding_pesado = face_recognition.face_encodings(
+            rgb_frame, 
+            [face_location], 
+            num_jitters=100, 
+            model="large"
+        )
+        
+        if encoding_pesado:
+            idx = self.known_ids.index(persona_id)
+            distancia = face_recognition.face_distance([self.known_encodings[idx]], encoding_pesado[0])[0]
+            similitud = (1 - distancia) * 100
+            return similitud
+        return None
+
+    def identificar_persona_rapida(self, encoding_actual):
+        if self.known_encodings is None or len(self.known_encodings) == 0:
+            return "Desconocido", 0.0, None
+
+        distancias = face_recognition.face_distance(self.known_encodings, encoding_actual)
+        
+        if len(distancias) == 0:
+            return "Desconocido", 0.0, None
+            
+        indice_mejor = np.argmin(distancias)
+        distancia_minima = distancias[indice_mejor]
+        porcentaje = (1 - distancia_minima) * 100
+        
+        if distancia_minima < 0.4:
+            nombre = self.known_names[indice_mejor]
+            persona_id = self.known_ids[indice_mejor]
+            return nombre, porcentaje, persona_id
+        
+        return "Desconocido", porcentaje, None
+
     def aplicar_clahe(self, bgr_frame):
-        # 1. Convertimos a espacio de color LAB 
-        # (L = Luminosidad, A y B = Colores)
         lab = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
-
-        # 2. Creamos el objeto CLAHE
-        # clipLimit: 2.0 es el estándar para no generar ruido artificial
-        # tileGridSize: (8,8) divide la cara en una rejilla para nivelar la luz
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        
-        # 3. Aplicamos solo a la capa de Luminosidad (L)
         cl = clahe.apply(l)
-
-        # 4. Volvemos a fusionar los canales y regresar a BGR
         limg = cv2.merge((cl, a, b))
         return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 

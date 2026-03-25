@@ -47,7 +47,7 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         )
         self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         cam_layout.addWidget(self.camera_widget, alignment=QtCore.Qt.AlignCenter)
-        self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
+        self.camera_widget.personaConfirmada.connect(self.actualizarAsistencia)
 
         main_layout.addWidget(cam_frame)
 
