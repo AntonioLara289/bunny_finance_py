@@ -26,7 +26,7 @@ from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
 # from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
 from ui.workers.camaraWorker import CameraWorker
-from ui.workers.faceRecognitionWorker import FaceRecognitionWorker
+from ui.workers.faceRecognitionWorker import FaceRecognitionWorkerRegistro
 
 class EscanerRostro(QtWidgets.QWidget):
     
@@ -214,29 +214,21 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_guardar_foto.show()
         self.cam_live.show()
         self.boton_cerrar_camara.show()
-        self.cargarDatosPersonas() # Carga datos de la DB
 
         self.iniciarCamaraWorker()
 
     def iniciarCamaraWorker(self):
         self.cap = cv2.VideoCapture(0)
 
-        # Establecer una resolución más baja para mayor velocidad
-        # (Puedes probar con 640x480 o 960x540)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        
-        # Establecer FPS (opcional, algunas cámaras lo ignoran)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
-        # ... (tus ajustes de resolución) ...
 
-        # 1. Configurar Hilos
         self.cam_thread = QThread()
         self.face_thread = QThread()
 
-        # 2. Configurar Workers
         self.cam_worker = CameraWorker(self.cap)
-        self.face_worker = FaceRecognitionWorker(self.encodings_db, self.nombres_personas_db, self.ids_personas_db)
+        self.face_worker = FaceRecognitionWorkerRegistro()
 
         # 3. Mover a hilos
         self.cam_worker.moveToThread(self.cam_thread)

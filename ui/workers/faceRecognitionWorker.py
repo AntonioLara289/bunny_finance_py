@@ -251,3 +251,37 @@ class FaceRecognitionWorker(QObject):
     def emitir_beep_rapido(self):
         # El símbolo '&' es la clave para que NO se trabe
         os.system('canberra-gtk-play --id="message-new-instant" &')
+
+
+class FaceRecognitionWorkerRegistro(QObject):
+    """Worker ligero para modo registro - solo muestra rostros sin comparación pesada"""
+    frame_processed = Signal(np.ndarray)
+    finished = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.frame_counter = 0
+        self.skip_frames = 2
+        self._running = True
+
+    def process_frame(self, frame):
+        if frame is None or not self._running:
+            return
+
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        if self.frame_counter % self.skip_frames == 0:
+            face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+
+            output_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
+
+            for (top, right, bottom, left) in face_locations:
+                cv2.rectangle(output_frame, (left, top), (right, bottom), (0, 255, 0), 2)
+                cv2.putText(output_frame, "Listo para capturar", (left, top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        self.frame_counter += 1
+        self.frame_processed.emit(output_frame)
+
+    def stop(self):
+        self._running = False
