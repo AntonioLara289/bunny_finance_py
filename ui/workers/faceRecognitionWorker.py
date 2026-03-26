@@ -264,20 +264,33 @@ class FaceRecognitionWorker(QObject):
 
 
 class FaceRecognitionWorkerRegistro(QObject):
-    """Worker ligero para modo registro - solo muestra rostros sin comparación pesada"""
+    """Worker para modo registro con HOG rápido y confirmaciones + encoding pesado"""
     frame_processed = Signal(np.ndarray)
     finished = Signal()
+    persona_identificada = Signal(str, int, float)
+    persona_nueva = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, encodings_db=None, nombres_db=None, ids_db=None, parent=None):
         super().__init__(parent)
         self.frame_counter = 0
         self.skip_frames = 2
         self._running = True
 
+        self.known_encodings = np.array(encodings_db) if encodings_db is not None and len(encodings_db) > 0 else np.array([])
+        self.known_names = nombres_db or []
+        self.known_ids = ids_db or []
+        self.umbral_hog = 0.35
+
+        self.confirmaciones = {}
+        self.confirmaciones_necesarias = 2
+        self.encoding_pesado_usado = {}
+        self.frame = None
+
     def process_frame(self, frame):
         if frame is None or not self._running:
             return
 
+        self.frame = frame
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         if self.frame_counter % self.skip_frames == 0:
@@ -285,13 +298,78 @@ class FaceRecognitionWorkerRegistro(QObject):
 
             output_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
 
-            for (top, right, bottom, left) in face_locations:
-                cv2.rectangle(output_frame, (left, top), (right, bottom), (0, 255, 0), 2)
-                cv2.putText(output_frame, "Listo para capturar", (left, top - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            if len(face_locations) > 0:
+                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=1, model="large")
+
+                for i, (loc, encoding) in enumerate(zip(face_locations, face_encodings)):
+                    distancia, nombre, persona_id = self.obtener_mejor_match(encoding)
+                    top, right, bottom, left = loc
+
+                    if distancia is not None and distancia < self.umbral_hog:
+                        similitud = (1 - distancia) * 100
+
+                        if persona_id not in self.confirmaciones:
+                            self.confirmaciones[persona_id] = {"count": 0, "nombre": nombre}
+
+                        self.confirmaciones[persona_id]["count"] += 1
+
+                        if self.confirmaciones[persona_id]["count"] == self.confirmaciones_necesarias:
+                            if persona_id not in self.encoding_pesado_usado:
+                                similitud_final = self.encoding_pesado_confirmacion(rgb_frame, loc, persona_id)
+                                if similitud_final is not None:
+                                    self.persona_identificada.emit(nombre, persona_id, similitud_final)
+                                    self.encoding_pesado_usado[persona_id] = True
+                            else:
+                                self.persona_identificada.emit(nombre, persona_id, similitud)
+                            self.confirmaciones[persona_id]["count"] += 1
+
+                        label = f"ID: {persona_id} ({similitud:.0f}%)"
+                        color = (0, 255, 0)
+                    else:
+                        label = "Nuevo"
+                        color = (0, 165, 255)
+                        self.confirmaciones.clear()
+                        if self.frame_counter % (self.skip_frames * 10) == 0:
+                            self.persona_nueva.emit()
+
+                    cv2.rectangle(output_frame, (left, top), (right, bottom), color, 2)
+                    cv2.putText(output_frame, label, (left, top - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            else:
+                self.confirmaciones.clear()
 
         self.frame_counter += 1
         self.frame_processed.emit(output_frame)
+
+    def obtener_mejor_match(self, encoding_actual):
+        if len(self.known_encodings) == 0:
+            return None, None, None
+
+        distancias = face_recognition.face_distance(self.known_encodings, encoding_actual)
+        
+        if len(distancias) == 0:
+            return None, None, None
+
+        indice_mejor = np.argmin(distancias)
+        distancia_minima = distancias[indice_mejor]
+        
+        return distancia_minima, self.known_names[indice_mejor], self.known_ids[indice_mejor]
+
+    def encoding_pesado_confirmacion(self, rgb_frame, face_location, persona_id):
+        encoding_pesado = face_recognition.face_encodings(
+            rgb_frame,
+            [face_location],
+            num_jitters=100,
+            model="large"
+        )
+
+        if encoding_pesado:
+            idx = self.known_ids.index(persona_id)
+            distancia = face_recognition.face_distance([self.known_encodings[idx]], encoding_pesado[0])[0]
+            similitud = (1 - distancia) * 100
+            print(f"Encoding pesado confirmado: {self.known_names[idx]} - {similitud:.1f}%")
+            return similitud
+        return None
 
     def stop(self):
         self._running = False

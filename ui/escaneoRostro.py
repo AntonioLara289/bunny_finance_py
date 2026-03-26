@@ -77,6 +77,16 @@ class EscanerRostro(QtWidgets.QWidget):
         self.scrollBarAreaFotos.setWidget(self.content_widget_scroll_bar)
 
         self.cam_live = QLabel(self)
+        self.label_estado_reconocimiento = QLabel("")
+        self.label_estado_reconocimiento.setAlignment(Qt.AlignCenter)
+        self.label_estado_reconocimiento.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px;
+                border-radius: 5px;
+            }
+        """)
         # self.label_foto_capturada = QLabel(self)
         # self.foto_de_camara = QLabel(self)
         # self.input_nombre_foto = QLineEdit()
@@ -91,6 +101,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.layout.addWidget(self.scrollBarAreaFotos)
         self.layout.addWidget(self.frame_camera)
         self.layout.addWidget(self.cam_live, alignment=Qt.AlignCenter)
+        self.layout.addWidget(self.label_estado_reconocimiento)
         self.layout.addWidget(self.boton_abrir_camara)
         self.layout.addWidget(self.boton_cerrar_camara)
         self.layout.addWidget(self.boton_guardar_foto)
@@ -194,6 +205,15 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_cerrar_camara.hide()
         self.cam_live.hide()
         self.boton_guardar_foto.hide()
+        self.label_estado_reconocimiento.setText("")
+        self.label_estado_reconocimiento.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px;
+                border-radius: 5px;
+            }
+        """)
 
     def onDestroy(self, event):
         # Asegurarse de llamar a cerrarCamara para limpiar los hilos al cambiar de pantalla
@@ -214,7 +234,9 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_guardar_foto.show()
         self.cam_live.show()
         self.boton_cerrar_camara.show()
+        self.label_estado_reconocimiento.setText("Escaneando rostro...")
 
+        self.cargarDatosPersonas()
         self.iniciarCamaraWorker()
 
     def iniciarCamaraWorker(self):
@@ -228,7 +250,11 @@ class EscanerRostro(QtWidgets.QWidget):
         self.face_thread = QThread()
 
         self.cam_worker = CameraWorker(self.cap)
-        self.face_worker = FaceRecognitionWorkerRegistro()
+        self.face_worker = FaceRecognitionWorkerRegistro(
+            encodings_db=self.encodings_db,
+            nombres_db=self.nombres_personas_db,
+            ids_db=self.ids_personas_db
+        )
 
         # 3. Mover a hilos
         self.cam_worker.moveToThread(self.cam_thread)
@@ -240,6 +266,10 @@ class EscanerRostro(QtWidgets.QWidget):
         self.cam_worker.frame_ready.connect(self.face_worker.process_frame)
         self.face_worker.frame_processed.connect(self.update_image)
 
+        # Señales de detección de persona
+        self.face_worker.persona_identificada.connect(self.on_persona_identificada)
+        self.face_worker.persona_nueva.connect(self.on_persona_nueva)
+
         # Limpieza automática al terminar
         self.cam_worker.finished.connect(self.cam_thread.quit)
         self.face_worker.finished.connect(self.face_thread.quit)
@@ -248,6 +278,32 @@ class EscanerRostro(QtWidgets.QWidget):
         self.cam_thread.started.connect(self.cam_worker.run)
         self.face_thread.start()
         self.cam_thread.start()
+
+    def on_persona_identificada(self, nombre, persona_id, similitud):
+        self.label_estado_reconocimiento.setText(f"Ya registrado: {nombre} ({similitud:.1f}%)")
+        self.label_estado_reconocimiento.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px;
+                border-radius: 5px;
+                background-color: #d4edda;
+                color: #155724;
+            }
+        """)
+
+    def on_persona_nueva(self):
+        self.label_estado_reconocimiento.setText("Listo para registrar")
+        self.label_estado_reconocimiento.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px;
+                border-radius: 5px;
+                background-color: #fff3cd;
+                color: #856404;
+            }
+        """)
         
     def liberar_todos_los_recursos(self):
         """Libera TODOS los recursos antes de cerrar"""

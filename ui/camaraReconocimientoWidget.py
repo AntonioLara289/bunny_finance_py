@@ -40,6 +40,7 @@ class CameraRecognitionWidget(QWidget):
         self.confirmaciones = {}
         self.confirmaciones_necesarias = 2
         self.frame_counter = 0
+        self.encoding_pesado_usado = {}
 
     def start_camera(self):
         if self.cap and self.cap.isOpened():
@@ -53,6 +54,8 @@ class CameraRecognitionWidget(QWidget):
         self.btn_open.hide()
         self.btn_close.show()
         self.timer.start(50)
+        self.confirmaciones.clear()
+        self.encoding_pesado_usado.clear()
 
     def stop_camera(self):
         if self.timer.isActive():
@@ -68,6 +71,7 @@ class CameraRecognitionWidget(QWidget):
         self.btn_open.show()
         self.btn_close.hide()
         self.confirmaciones.clear()
+        self.encoding_pesado_usado.clear()
 
     def update_frame(self):
         if not self.cap or not self.cap.isOpened():
@@ -107,10 +111,12 @@ class CameraRecognitionWidget(QWidget):
                         self.confirmaciones[id_]["count"] += 1
 
                         if self.confirmaciones[id_]["count"] == self.confirmaciones_necesarias:
-                            similitud_confirmada = self.confirmar_con_encoding_pesado(frame, loc, id_)
-                            if similitud_confirmada is not None:
-                                print(f"PERSONA CONFIRMADA: {name} - {similitud_confirmada:.1f}%")
-                                self.personaConfirmada.emit(name, id_, similitud_confirmada)
+                            if id_ not in self.encoding_pesado_usado:
+                                similitud_confirmada = self.confirmar_con_encoding_pesado(frame, loc, id_)
+                                if similitud_confirmada is not None:
+                                    print(f"PERSONA CONFIRMADA: {name} - {similitud_confirmada:.1f}%")
+                                    self.personaConfirmada.emit(name, id_, similitud_confirmada)
+                                self.encoding_pesado_usado[id_] = True
                             self.confirmaciones[id_]["count"] += 1
                     else:
                         for key in list(self.confirmaciones.keys()):
