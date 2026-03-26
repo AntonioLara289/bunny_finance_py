@@ -273,7 +273,8 @@ class FaceRecognitionWorkerRegistro(QObject):
     def __init__(self, encodings_db=None, nombres_db=None, ids_db=None, parent=None):
         super().__init__(parent)
         self.frame_counter = 0
-        self.skip_frames = 2
+        self.skip_frames = 3
+        self.skip_recalculo = 15
         self._running = True
 
         self.known_encodings = np.array(encodings_db) if encodings_db is not None and len(encodings_db) > 0 else np.array([])
@@ -284,59 +285,87 @@ class FaceRecognitionWorkerRegistro(QObject):
         self.confirmaciones = {}
         self.confirmaciones_necesarias = 2
         self.encoding_pesado_usado = {}
-        self.frame = None
+
+        self.last_locations = []
+        self.last_labels = []
+        self.last_colors = []
+        self.personas_detectadas = {}
 
     def process_frame(self, frame):
         if frame is None or not self._running:
             return
 
-        self.frame = frame
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        output_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
 
-        if self.frame_counter % self.skip_frames == 0:
+        procesar_recalculo = self.frame_counter % self.skip_recalculo == 0
+        procesar_deteccion = self.frame_counter % self.skip_frames == 0
+
+        if procesar_deteccion or procesar_recalculo:
             face_locations = face_recognition.face_locations(rgb_frame, model="hog")
 
-            output_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
-
             if len(face_locations) > 0:
-                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=1, model="large")
+                if procesar_recalculo:
+                    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=1, model="large")
+                    self.last_locations = []
+                    self.last_labels = []
+                    self.last_colors = []
+                    self.personas_detectadas = {}
 
-                for i, (loc, encoding) in enumerate(zip(face_locations, face_encodings)):
-                    distancia, nombre, persona_id = self.obtener_mejor_match(encoding)
-                    top, right, bottom, left = loc
+                    for loc, encoding in zip(face_locations, face_encodings):
+                        distancia, nombre, persona_id = self.obtener_mejor_match(encoding)
+                        top, right, bottom, left = loc
 
-                    if distancia is not None and distancia < self.umbral_hog:
-                        similitud = (1 - distancia) * 100
+                        if distancia is not None and distancia < self.umbral_hog:
+                            similitud = (1 - distancia) * 100
 
-                        if persona_id not in self.confirmaciones:
-                            self.confirmaciones[persona_id] = {"count": 0, "nombre": nombre}
+                            if persona_id not in self.confirmaciones:
+                                self.confirmaciones[persona_id] = {"count": 0, "nombre": nombre}
 
-                        self.confirmaciones[persona_id]["count"] += 1
-
-                        if self.confirmaciones[persona_id]["count"] == self.confirmaciones_necesarias:
-                            if persona_id not in self.encoding_pesado_usado:
-                                similitud_final = self.encoding_pesado_confirmacion(rgb_frame, loc, persona_id)
-                                if similitud_final is not None:
-                                    self.persona_identificada.emit(nombre, persona_id, similitud_final)
-                                    self.encoding_pesado_usado[persona_id] = True
-                            else:
-                                self.persona_identificada.emit(nombre, persona_id, similitud)
                             self.confirmaciones[persona_id]["count"] += 1
 
-                        label = f"ID: {persona_id} ({similitud:.0f}%)"
-                        color = (0, 255, 0)
-                    else:
-                        label = "Nuevo"
-                        color = (0, 165, 255)
-                        self.confirmaciones.clear()
-                        if self.frame_counter % (self.skip_frames * 10) == 0:
-                            self.persona_nueva.emit()
+                            if self.confirmaciones[persona_id]["count"] >= self.confirmaciones_necesarias:
+                                if persona_id not in self.encoding_pesado_usado:
+                                    similitud_final = self.encoding_pesado_confirmacion(rgb_frame, loc, persona_id)
+                                    if similitud_final is not None:
+                                        self.persona_identificada.emit(nombre, persona_id, similitud_final)
+                                        self.encoding_pesado_usado[persona_id] = True
+                                        self.personas_detectadas[persona_id] = similitud_final
+                                else:
+                                    self.persona_identificada.emit(nombre, persona_id, similitud)
+                                    self.personas_detectadas[persona_id] = similitud
 
+                            label = f"ID: {persona_id} ({similitud:.0f}%)"
+                            color = (0, 255, 0)
+                        else:
+                            label = "Nuevo"
+                            color = (0, 165, 255)
+                            if self.frame_counter % (self.skip_recalculo * 2) == 0:
+                                self.persona_nueva.emit()
+
+                        self.last_locations.append(loc)
+                        self.last_labels.append(label)
+                        self.last_colors.append(color)
+                else:
+                    self.last_locations = face_locations
+
+                for loc, label, color in zip(self.last_locations, self.last_labels, self.last_colors):
+                    top, right, bottom, left = loc
                     cv2.rectangle(output_frame, (left, top), (right, bottom), color, 2)
                     cv2.putText(output_frame, label, (left, top - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             else:
                 self.confirmaciones.clear()
+                self.last_locations = []
+                self.last_labels = []
+                self.last_colors = []
+
+        elif self.last_locations:
+            for loc, label, color in zip(self.last_locations, self.last_labels, self.last_colors):
+                top, right, bottom, left = loc
+                cv2.rectangle(output_frame, (left, top), (right, bottom), color, 2)
+                cv2.putText(output_frame, label, (left, top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
         self.frame_counter += 1
         self.frame_processed.emit(output_frame)
@@ -359,7 +388,7 @@ class FaceRecognitionWorkerRegistro(QObject):
         encoding_pesado = face_recognition.face_encodings(
             rgb_frame,
             [face_location],
-            num_jitters=100,
+            num_jitters=50,
             model="large"
         )
 
