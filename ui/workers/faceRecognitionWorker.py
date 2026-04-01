@@ -273,8 +273,8 @@ class FaceRecognitionWorkerRegistro(QObject):
     def __init__(self, encodings_db=None, nombres_db=None, ids_db=None, parent=None):
         super().__init__(parent)
         self.frame_counter = 0
-        self.skip_frames = 3
-        self.skip_recalculo = 15
+        self.skip_deteccion = 5
+        self.skip_recalculo = 30
         self._running = True
 
         self.known_encodings = np.array(encodings_db) if encodings_db is not None and len(encodings_db) > 0 else np.array([])
@@ -289,7 +289,6 @@ class FaceRecognitionWorkerRegistro(QObject):
         self.last_locations = []
         self.last_labels = []
         self.last_colors = []
-        self.personas_detectadas = {}
 
     def process_frame(self, frame):
         if frame is None or not self._running:
@@ -298,19 +297,18 @@ class FaceRecognitionWorkerRegistro(QObject):
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         output_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
 
-        procesar_recalculo = self.frame_counter % self.skip_recalculo == 0
-        procesar_deteccion = self.frame_counter % self.skip_frames == 0
+        frame_para_recalculo = self.frame_counter % self.skip_recalculo == 0
+        frame_para_deteccion = self.frame_counter % self.skip_deteccion == 0
 
-        if procesar_deteccion or procesar_recalculo:
+        if frame_para_deteccion:
             face_locations = face_recognition.face_locations(rgb_frame, model="hog")
 
             if len(face_locations) > 0:
-                if procesar_recalculo:
-                    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=1, model="large")
+                if frame_para_recalculo:
+                    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations, num_jitters=1, model="small")
                     self.last_locations = []
                     self.last_labels = []
                     self.last_colors = []
-                    self.personas_detectadas = {}
 
                     for loc, encoding in zip(face_locations, face_encodings):
                         distancia, nombre, persona_id = self.obtener_mejor_match(encoding)
@@ -330,16 +328,16 @@ class FaceRecognitionWorkerRegistro(QObject):
                                     if similitud_final is not None:
                                         self.persona_identificada.emit(nombre, persona_id, similitud_final)
                                         self.encoding_pesado_usado[persona_id] = True
-                                        self.personas_detectadas[persona_id] = similitud_final
                                 else:
                                     self.persona_identificada.emit(nombre, persona_id, similitud)
-                                    self.personas_detectadas[persona_id] = similitud
 
                             label = f"ID: {persona_id} ({similitud:.0f}%)"
                             color = (0, 255, 0)
                         else:
                             label = "Nuevo"
                             color = (0, 165, 255)
+                            if persona_id in self.confirmaciones:
+                                del self.confirmaciones[persona_id]
                             if self.frame_counter % (self.skip_recalculo * 2) == 0:
                                 self.persona_nueva.emit()
 
