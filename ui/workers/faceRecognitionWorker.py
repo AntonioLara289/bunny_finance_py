@@ -285,7 +285,6 @@ class FaceRecognitionWorkerRegistro(QObject):
         self.confirmaciones = {}
         self.confirmaciones_necesarias = 2
         self.encoding_pesado_usado = {}
-        self.similitud_pesada = {}
 
         self.last_locations = []
         self.last_labels = []
@@ -327,24 +326,16 @@ class FaceRecognitionWorkerRegistro(QObject):
                                 if persona_id not in self.encoding_pesado_usado:
                                     similitud_final = self.encoding_pesado_confirmacion(rgb_frame, loc, persona_id)
                                     if similitud_final is not None:
-                                        self.similitud_pesada[persona_id] = similitud_final
                                         self.persona_identificada.emit(nombre, persona_id, similitud_final)
                                         self.encoding_pesado_usado[persona_id] = True
-                                else:
-                                    self.persona_identificada.emit(nombre, persona_id, similitud)
 
-                            if persona_id in self.similitud_pesada:
-                                label = f"ID: {persona_id} ({self.similitud_pesada[persona_id]:.0f}%)"
-                            else:
-                                label = f"ID: {persona_id} ({similitud:.0f}%)"
+                            label = f"ID: {persona_id} ({similitud:.0f}%)"
                             color = (0, 255, 0)
                         else:
                             label = "Nuevo"
                             color = (0, 165, 255)
                             if persona_id in self.confirmaciones:
                                 del self.confirmaciones[persona_id]
-                            if persona_id in self.similitud_pesada:
-                                del self.similitud_pesada[persona_id]
                             if self.frame_counter % (self.skip_recalculo * 2) == 0:
                                 self.persona_nueva.emit()
 
@@ -361,7 +352,6 @@ class FaceRecognitionWorkerRegistro(QObject):
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             else:
                 self.confirmaciones.clear()
-                self.similitud_pesada.clear()
                 self.last_locations = []
                 self.last_labels = []
                 self.last_colors = []
