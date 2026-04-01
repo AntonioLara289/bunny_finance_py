@@ -394,7 +394,7 @@ class FaceRecognitionWorkerRegistro(QObject):
         encoding_pesado = face_recognition.face_encodings(
             rgb_frame,
             [face_location],
-            num_jitters=50,
+            num_jitters=100,
             model="large"
         )
 

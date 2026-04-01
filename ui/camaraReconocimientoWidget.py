@@ -175,7 +175,7 @@ class CameraRecognitionWidget(QWidget):
         encoding_pesado = face_recognition.face_encodings(
             rgb,
             [face_location],
-            num_jitters=50,
+            num_jitters=100,
             model="large"
         )
 
