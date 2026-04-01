@@ -35,9 +35,14 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         self.dbManager = DBManager()
         self.getPersonas = self.dbManager.getPersonas()
 
-        self.encodings = [json.loads(p[3]) for p in self.getPersonas]
-        self.names = [p[1] for p in self.getPersonas]
-        self.ids = [p[0] for p in self.getPersonas]
+        self.encodings = []
+        self.names = []
+        self.ids = []
+        
+        for persona in self.getPersonas:
+            self.encodings.extend([json.loads(persona[3]), json.loads(persona[4]), json.loads(persona[5])])
+            self.names.extend([persona[1], persona[1], persona[1]])
+            self.ids.extend([persona[0], persona[0], persona[0]])
 
         # Camera widget
         self.camera_widget = CameraRecognitionWidget(

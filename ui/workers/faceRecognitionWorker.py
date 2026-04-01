@@ -389,10 +389,12 @@ class FaceRecognitionWorkerRegistro(QObject):
         )
 
         if encoding_pesado:
-            idx = self.known_ids.index(persona_id)
-            distancia = face_recognition.face_distance([self.known_encodings[idx]], encoding_pesado[0])[0]
-            similitud = (1 - distancia) * 100
-            print(f"Encoding pesado confirmado: {self.known_names[idx]} - {similitud:.1f}%")
+            indices_persona = [i for i, pid in enumerate(self.known_ids) if pid == persona_id]
+            distancias = face_recognition.face_distance(self.known_encodings[indices_persona], encoding_pesado[0])
+            distancia_minima = np.min(distancias)
+            similitud = (1 - distancia_minima) * 100
+            nombre = self.known_names[indices_persona[0]]
+            print(f"Encoding pesado confirmado: {nombre} - {similitud:.1f}%")
             return similitud
         return None
 

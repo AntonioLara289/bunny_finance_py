@@ -180,9 +180,10 @@ class CameraRecognitionWidget(QWidget):
         )
 
         if encoding_pesado:
-            idx = self.ids_db.index(persona_id)
-            distancia = face_recognition.face_distance([self.encodings_db[idx]], encoding_pesado[0])[0]
-            similitud = (1 - distancia) * 100
+            indices_persona = [i for i, pid in enumerate(self.ids_db) if pid == persona_id]
+            distancias = face_recognition.face_distance([self.encodings_db[i] for i in indices_persona], encoding_pesado[0])
+            distancia_minima = np.min(distancias)
+            similitud = (1 - distancia_minima) * 100
             return similitud
         return None
 
