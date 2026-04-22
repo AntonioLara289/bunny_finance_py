@@ -19,6 +19,7 @@ from PySide6.QtCore import (
 import mediapipe as mp
 import face_recognition
 import cv2
+from cv2_enumerate_cameras import enumerate_cameras
 import json
 import numpy as np
 import math
@@ -27,6 +28,7 @@ from database.db_manager import DBManager
 # from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
 from ui.workers.camaraWorker import CameraWorker
 from ui.workers.faceRecognitionWorker import FaceRecognitionWorkerRegistro
+from ui.dialogs.camarasDisponibles import CamarasDisponibles
 
 class EscanerRostro(QtWidgets.QWidget):
     
@@ -240,7 +242,31 @@ class EscanerRostro(QtWidgets.QWidget):
         self.iniciarCamaraWorker()
 
     def iniciarCamaraWorker(self):
-        self.cap = cv2.VideoCapture(0)
+        
+        camaras_disponibles = []
+
+        for camera_info in enumerate_cameras():
+
+            camara = {"index": camera_info.index, "nombre": camera_info.name}
+            camaras_disponibles.append(camara)
+
+            print(f"Index: {camera_info.index}, Name: {camera_info.name}")
+
+        camaras_disponibles = list({c['nombre']: c for c in camaras_disponibles}.values())
+
+        modal = CamarasDisponibles(camaras_disponibles=camaras_disponibles)
+        resultado = modal.exec()
+
+        if resultado == QDialog.Accepted:
+            print("Camara seleccionada Aceptada")
+            camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
+            print('camara_seleccionada: ', camara_seleccionada)
+        elif resultado == QDialog.Rejected:
+            print("Rechazado")
+            self.cerrarCamara()
+            return
+                        
+        self.cap = cv2.VideoCapture(camara_seleccionada["index"])
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
