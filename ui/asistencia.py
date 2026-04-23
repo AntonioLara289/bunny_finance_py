@@ -35,9 +35,14 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         self.dbManager = DBManager()
         self.getPersonas = self.dbManager.getPersonas()
 
-        self.encodings = [json.loads(p[3]) for p in self.getPersonas]
-        self.names = [p[1] for p in self.getPersonas]
-        self.ids = [p[0] for p in self.getPersonas]
+        self.encodings = []
+        self.names = []
+        self.ids = []
+        
+        for persona in self.getPersonas:
+            self.encodings.extend([json.loads(persona[3]), json.loads(persona[4]), json.loads(persona[5])])
+            self.names.extend([persona[1], persona[1], persona[1]])
+            self.ids.extend([persona[0], persona[0], persona[0]])
 
         # Camera widget
         self.camera_widget = CameraRecognitionWidget(
@@ -47,7 +52,7 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         )
         self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         cam_layout.addWidget(self.camera_widget, alignment=QtCore.Qt.AlignCenter)
-        self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
+        self.camera_widget.personaConfirmada.connect(self.actualizarAsistencia)
 
         main_layout.addWidget(cam_frame)
 
@@ -82,11 +87,21 @@ class AsistenciaPantalla(QtWidgets.QWidget):
 
     # ===== Update attendance =====
     def actualizarAsistencia(self, name, id_, similarity):
+        similarityPercentajeAttendance = 60
         for row in range(self.table.rowCount()):
             id_item = self.table.item(row, 0)
             if id_item and int(id_item.text()) == id_:
-                self.table.item(row, 2).setText(f"{similarity}%")
-                if similarity >= 62:
-                    combo = self.table.cellWidget(row, 3)
-                    combo.setCurrentText("Asistió")
-                break
+                similarity_item = self.table.item(row, 2)
+                if similarity_item:
+                    try:
+                        current_similarity = float(similarity_item.text().replace('%', '').strip())
+                    except ValueError:
+                        current_similarity = 0.0
+
+                    if similarity > current_similarity:
+                        similarity_item.setText(f"{similarity:.2f}%")
+                        if similarity >= similarityPercentajeAttendance:        # Porcentaje para ser admitida la asistencia
+                            combo = self.table.cellWidget(row, 3)
+                            if combo:
+                                combo.setCurrentText("Asistió")
+                        break
