@@ -29,6 +29,7 @@ from database.db_manager import DBManager
 from ui.workers.camaraWorker import CameraWorker
 from ui.workers.faceRecognitionWorker import FaceRecognitionWorkerRegistro
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
+from ui.dialogs.camarasDisponiblesMultiple import CamarasDisponiblesMultiple
 
 class EscanerRostro(QtWidgets.QWidget):
     
@@ -260,12 +261,13 @@ class EscanerRostro(QtWidgets.QWidget):
         if resultado == QDialog.Accepted:
             print("Camara seleccionada Aceptada")
             camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
-            print('camara_seleccionada: ', camara_seleccionada)
+            # camaras_seleccionadas = modal.getCurrentIndexCombox()
+            # print('camaras_seleccionadas: ', camaras_seleccionadas)
         elif resultado == QDialog.Rejected:
             print("Rechazado")
             self.cerrarCamara()
             return
-                        
+                                
         self.cap = cv2.VideoCapture(camara_seleccionada["index"])
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)

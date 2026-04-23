@@ -2,32 +2,27 @@ from PySide6 import QtWidgets
 from PySide6.QtWidgets import (
     QDialog,
     QPushButton,
-    QComboBox
 ) 
-class CamarasDisponibles(QDialog):
+from ui.widgets.multicombo import MultiComboBox
+
+class CamarasDisponiblesMultiple(QDialog):
 
     def __init__(self, parent = None, camaras_disponibles = None):
 
-        super(CamarasDisponibles, self).__init__(parent)
+        super(CamarasDisponiblesMultiple, self).__init__(parent)
 
-        self.setWindowTitle("Seleccione una cámara")
-        # print('camaras_disponibles: ', camaras_disponibles)
-        # print("tipo de estructura:", type(camaras_disponibles))
+        self.setWindowTitle("Seleccione multiples cámaras")
+        print('camaras_disponibles: ', camaras_disponibles)
+        print("tipo de estructura:", type(camaras_disponibles))
+
         # self.setWindowFlags(self.windowFlags() | Qt.WindowStayOnTopHint)
 
         ##ALWAYS ON TOP
         self.setModal(True)
 
-        self.comboBox = QComboBox()
-        # self.comboBox.addItem("Camara 1")
-        # self.comboBox.addItem("Camara 2")
-        # self.comboBox.addItem("Camara 3")
-
+        self.multiCombo = MultiComboBox()
         for camara in camaras_disponibles:
-            # print('camara: ', camara)
-            self.comboBox.addItem(camara["nombre"], userData=camara["index"])
-
-        self.comboBox.currentIndexChanged.connect(self.on_change) # Signal triggered on change
+            self.multiCombo.addItem(camara['nombre'], data=camara['index'])
 
         # self.exec()
         self.layout = QtWidgets.QVBoxLayout()
@@ -39,7 +34,7 @@ class CamarasDisponibles(QDialog):
         botones_layout.addWidget(self.boton_seleccionar_camara)
         botones_layout.addWidget(self.boton_cancelar_seleccion)
 
-        self.layout.addWidget(self.comboBox)
+        self.layout.addWidget(self.multiCombo)
         self.layout.addLayout(botones_layout)
 
         self.setLayout(self.layout)
@@ -49,10 +44,10 @@ class CamarasDisponibles(QDialog):
 
     def on_change(self, index):
         # Recuperamos el dato oculto usando el índice de la fila seleccionada
-        camara_id = self.comboBox.itemData(index)
+        camara_id = self.multiCombo.itemData(index)
         
         # También podemos recuperar el nombre si lo necesitas
-        nombre = self.comboBox.itemText(index)
+        nombre = self.multiCombo.itemText(index)
         
         print(f"Seleccionaste: {nombre} (ID técnico: {camara_id})")
         # print(f"Current selection: {text}")
@@ -80,11 +75,13 @@ class CamarasDisponibles(QDialog):
         self.reject()
 
     def seleccionarCamara(self):
+        if len(self.multiCombo.get_selected_data()) <= 0:
+            return
         self.accept()
-    
-    def getCurrentIndexCombox(self):
-        return self.comboBox.currentIndex()
 
+    def getCurrentIndexCombox(self):
+        return self.multiCombo.get_selected_data()
+ 
     def cancelar(self):
         self.nombre_imagen.setText(" ") 
         self.data = None
