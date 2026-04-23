@@ -25,6 +25,8 @@ __pycache__/
 .idea/
 .vscode/
 
+*.xlsx
+
 # Archivos de dependencia de MediaPipe y OpenCV
 opencv_cache/
 
