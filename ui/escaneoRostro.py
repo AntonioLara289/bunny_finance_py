@@ -259,8 +259,20 @@ class EscanerRostro(QtWidgets.QWidget):
         resultado = modal.exec()
 
         if resultado == QDialog.Accepted:
-            print("Camara seleccionada Aceptada")
-            camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
+            # print("Camara seleccionada Aceptada")
+
+            camara_es_ip = modal.getTipoCamara()
+            print('camara_es_ip: ', camara_es_ip)
+            camara = ""
+
+            if not camara_es_ip:
+                # camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
+                camara = camaras_disponibles[modal.getCurrentIndexCombox()]["index"]
+
+            if camara_es_ip:
+                camara =  modal.getIpCamara()
+                
+
             # camaras_seleccionadas = modal.getCurrentIndexCombox()
             # print('camaras_seleccionadas: ', camaras_seleccionadas)
         elif resultado == QDialog.Rejected:
@@ -268,7 +280,10 @@ class EscanerRostro(QtWidgets.QWidget):
             self.cerrarCamara()
             return
                                 
-        self.cap = cv2.VideoCapture(camara_seleccionada["index"])
+
+        # self.cap = cv2.VideoCapture("http://192.168.10.66:4747/video")
+        print('camara: ', camara)
+        self.cap = cv2.VideoCapture(camara)
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
