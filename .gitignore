@@ -1,36 +1,36 @@
-# .gitignore
-
-# Entorno virtual
+# Virtual environments
 .venv/
 venv/
 mi_entorno/
 
-# Dlib
-dlib/
-
-# Carpeta de compilacion con pyinstaller
-dist/
-
-# Archivos de Python compilados
+# Python cache
 __pycache__/
 *.py[cod]
-*.db
 *.pyc
 
-# Configuraciones del sistema o IDE
-*.log
+# Databases
+*.db
 *.sqlite3
-*.sqbpro
-*.xlsx
+
+# Build / dist
+dist/
+
+# Logs & temp
+*.log
+
+# IDE / OS
 .DS_Store
 .env
 .idea/
 .vscode/
 
-# Archivos de dependencia de MediaPipe y OpenCV
+# Tools
+*.sqbpro
+*.xlsx
+
+# OpenCV cache
 opencv_cache/
 
+# Project-specific
 src/img/personas
-
 database/bunny_detect.db
-*.pyc
