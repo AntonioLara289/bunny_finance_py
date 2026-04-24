@@ -2,12 +2,12 @@ from PySide6 import QtWidgets, QtCore
 from ui.top_bar import TopBar
 from log import log
 
-
 class Historial(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Historial")
+        log.push("Vista historial", "Abierto")
 
         # Layout principal
         layout = QtWidgets.QVBoxLayout(self)

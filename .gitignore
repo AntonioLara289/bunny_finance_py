@@ -20,12 +20,12 @@ __pycache__/
 # Configuraciones del sistema o IDE
 *.log
 *.sqlite3
+*.sqbpro
+*.xlsx
 .DS_Store
 .env
 .idea/
 .vscode/
-
-*.xlsx
 
 # Archivos de dependencia de MediaPipe y OpenCV
 opencv_cache/

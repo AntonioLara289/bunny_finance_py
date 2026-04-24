@@ -7,12 +7,13 @@ from PySide6.QtCore import QTime
 from PySide6.QtCore import Qt
 from ui.top_bar import TopBar
 from database.db_manager import DBManager
+from log import log
 
 # Dialog para crear / editar sesión
 class SesionDialog(QDialog):
     def __init__(self, parent=None, nombre="", hora_inicio=None, hora_fin=None):
         super().__init__(parent)
-
+        log.push("Vista sesiones", "Abierto")
         self.setWindowTitle("Sesión")
         self.setFixedSize(420, 160)
 

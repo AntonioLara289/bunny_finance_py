@@ -99,11 +99,11 @@ class CameraRecognitionWidget(QWidget):
         procesar_recalculo = self.frame_counter % 15 == 0
 
         if procesar_deteccion or procesar_recalculo:
-            face_locations = face_recognition.face_locations(rgb, model="hog")
+            face_locations = face_recognition.face_locations(rgb, model="CNN")
 
             if len(face_locations) > 0:
                 if procesar_recalculo:
-                    face_encodings = face_recognition.face_encodings(rgb, face_locations, num_jitters=1, model="large")
+                    face_encodings = face_recognition.face_encodings(rgb, face_locations, num_jitters=5, model="large")
                     self.last_locations = []
                     self.last_labels = []
                     self.last_colors = []

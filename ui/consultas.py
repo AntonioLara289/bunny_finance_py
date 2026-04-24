@@ -4,11 +4,14 @@ from PySide6.QtWidgets import (
     QLabel, QVBoxLayout, QHBoxLayout, QFrame, QHeaderView, QSizePolicy
 )
 from database.db_manager import DBManager
+from log import log
 
+#log.push("Reconocimiento facial", "Juan identificado")
 class Consultas(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setAccessibleName("ConsultasWidget")
+        log.push("Vista consultas", "Abierto")
         # ===== Base layout =====
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)

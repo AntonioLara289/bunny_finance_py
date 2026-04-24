@@ -91,7 +91,7 @@ class AsistenciaPantalla(QtWidgets.QWidget):
                 self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
                 self.camera_widget.setMinimumHeight(320)
                 cam_layout.addWidget(self.camera_widget)
-                self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
+                #self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
                 main_layout.addWidget(cam_frame)
                 # Auto-start camera if requested
                 if auto_start_camera:
