@@ -29,7 +29,7 @@ class CameraWorker(QObject):
                 if self.cap and self.cap.isOpened():
                     ret, frame = self.cap.read()
                     if ret:
-                        self.frame_ready.emit(frame)
+                        self.frame_ready.emit(self.aplicar_clahe(frame))
                         with QMutexLocker(self.mutex):
                             self.ultimo_frame = frame.copy()
                     else:
@@ -68,3 +68,24 @@ class CameraWorker(QObject):
             self.cap.release()
             self.cap = None
         print("Recursos de cámara liberados.")
+
+
+    def adjust_gamma(self, frame):
+        gamma = 1.0
+        # Create an inverse gamma for the lookup table
+        invGamma = 1.0 / gamma
+        # Build a lookup table mapping [0, 255] to their adjusted values
+        table = np.array([((i / 255.0) ** invGamma) * 255
+                        for i in np.arange(0, 256)]).astype("uint8")
+        # Apply gamma correction using the lookup table
+        return cv2.LUT(frame, table)
+    
+    def aplicar_clahe(self, frame):
+        # 1. Leer imagen en escala de grises
+        # img = cv2.imread(frame, cv2.IMREAD_GRAYSCALE)
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # 2. Crear objeto CLAHE
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        # 3. Aplicar CLAHE
+        return clahe.apply(gray_frame)
