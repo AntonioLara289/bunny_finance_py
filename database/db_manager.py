@@ -63,8 +63,6 @@ class DBManager:
         "encoding_perfil_izquierdo TEXT NOT NULL, " \
         "encoding_frente TEXT NOT NULL, " \
         "encoding_perfil_derecho TEXT NOT NULL, " \
-        "encoding_arriba TEXT, " \
-        "encoding_abajo TEXT, " \
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
 
@@ -84,8 +82,6 @@ class DBManager:
         "encoding_perfil_izquierdo TEXT NOT NULL, " \
         "encoding_frente TEXT NOT NULL, " \
         "encoding_perfil_derecho TEXT NOT NULL, " \
-        "encoding_arriba TEXT, " \
-        "encoding_abajo TEXT, " \
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
 
@@ -237,17 +233,15 @@ class DBManager:
                            imagen, 
                            encoding_frente, 
                            encoding_perfil_derecho, 
-                           encoding_perfil_izquierdo,
-                           encoding_arriba=None,
-                           encoding_abajo=None
+                           encoding_perfil_izquierdo
                            ):
 
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        data = (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, encoding_arriba, encoding_abajo, 1, datetime.now().isoformat())
+        data = (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, 1, datetime.now().isoformat())
 
-        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, encoding_arriba, encoding_abajo, estatus, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+        self.cursor.execute("INSERT INTO personas (nombre_persona, imagen, encoding_frente, encoding_perfil_derecho, encoding_perfil_izquierdo, estatus, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", data)
 
         self.conn.commit()
         self.conn.close()

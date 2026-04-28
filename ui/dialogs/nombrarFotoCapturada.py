@@ -22,11 +22,9 @@ class NombrarFotoCapturada(QDialog):
                  imagenes = None, 
                  encoding_frente = None, 
                  encoding_perfil_derecho = None,
-                 encoding_perfil_izquierdo = None,
-                 encoding_arriba = None,
-                 encoding_abajo = None
+                 encoding_perfil_izquierdo = None
                  ):
-        ##
+##
         super(NombrarFotoCapturada, self).__init__(parent)
 
         self.setWindowTitle("Nombre la foto capturada")
@@ -36,9 +34,7 @@ class NombrarFotoCapturada(QDialog):
         self.encodings = {
             "encoding_frente": encoding_frente,
             "encoding_derecho": encoding_perfil_derecho,
-            "encoding_izquierdo": encoding_perfil_izquierdo,
-            "encoding_arriba": encoding_arriba,
-            "encoding_abajo": encoding_abajo
+            "encoding_izquierdo": encoding_perfil_izquierdo 
         }
         
         self.dbManager = DBManager()
@@ -134,24 +130,52 @@ class NombrarFotoCapturada(QDialog):
             encoding_frente = self.encodings["encoding_frente"]
             encoding_izq = self.encodings["encoding_izquierdo"]
             encoding_der = self.encodings["encoding_derecho"]
-            encoding_arriba = self.encodings.get("encoding_arriba")
-            encoding_abajo = self.encodings.get("encoding_abajo")
+
+            encoding_promedio = np.mean([encoding_frente, encoding_izq, encoding_der], axis=0)
+
+            personas_db = self.dbManager.getPersonas()
+            
+            if len(personas_db) > 0:
+                encodings_db = []
+                nombres_db = []
+                
+                for persona in personas_db:
+                    encodings_db.append(json.loads(persona[3]))
+                    nombres_db.append(persona[1])
+                
+                encodings_db = np.array(encodings_db)
+                
+                distancias = face_recognition.face_distance(encodings_db, encoding_promedio)
+                
+                if len(distancias) > 0:
+                    indice_max = np.argmin(distancias)
+                    distancia_minima = distancias[indice_max]
+                    similitud_max = (1 - distancia_minima) * 100
+                    nombre_similar = nombres_db[indice_max]
+                    
+                    umbral_similitud = 80.0
+                    
+                    if similitud_max > umbral_similitud:
+                        respuesta = QMessageBox.warning(
+                            self,
+                            "Persona Similar Detectada",
+                            f"Esta persona tiene {similitud_max:.1f}% de similitud con '{nombre_similar}'.\n\n¿Desea registrarla de todas formas?",
+                            QMessageBox.Yes | QMessageBox.No
+                        )
+                        if respuesta == QMessageBox.No:
+                            self.boton_guardar_foto.setEnabled(True)
+                            return
 
             json_frente = json.dumps(encoding_frente.tolist())
             json_izq = json.dumps(encoding_izq.tolist())
             json_der = json.dumps(encoding_der.tolist())
-            json_arriba = json.dumps(encoding_arriba.tolist()) if encoding_arriba is not None else None
-            json_abajo = json.dumps(encoding_abajo.tolist()) if encoding_abajo is not None else None
 
             self.dbManager.guardarPersonaData(
                 self.nombre_imagen.text(), 
                 self.nombre_imagen.text() + '.png',
                 json_frente,
-                json_der,
                 json_izq,
-                json_arriba,
-                json_abajo
-            )
+                json_der)
 
             output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
 
