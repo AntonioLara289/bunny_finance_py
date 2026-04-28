@@ -11,6 +11,7 @@ from ui.camera import CameraWidget
 from ui.calculo import Calculo
 from ui.visualizacionEncodings import UMAPViewer
 from ui.escaneoRostro import EscanerRostro
+from ui.preferencias import Preferencias
 from ui.Historial import Historial
 from ui.sesiones import Sesiones
 from ui.animated_menu import AnimatedMenu
@@ -74,6 +75,11 @@ class MainWindow(QtWidgets.QMainWindow):
         menu_bar.addMenu(opciones_menu)
         self._crear_menu_opciones(opciones_menu)
 
+        # ---- Menú Vistas ----
+        vistas_menu = AnimatedMenu("Vistas", self)
+        menu_bar.addMenu(vistas_menu)
+        self._crear_menu_vistas(vistas_menu)
+
         # ---- Menú Estilos ----
         #estilos_menu = QMenu("Estilos", self)  # para probar sin AnimatedMenu
         estilos_menu = AnimatedMenu("Estilos", self)
@@ -86,6 +92,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self._crear_menu_data(acerca_menu)
 
     def _crear_menu_opciones(self, menu) -> None:
+        # Preferencias
+        self._add_action(
+            menu,
+            text="Preferencias",
+            tip="Ver configuraciones generales",
+            slot=self.mostrarVistaPreferencias,
+        )
+
+        menu.addSeparator()
+
+        # Salir
+        self._add_action(
+            menu,
+            text="Salir",
+            tip="Salir de la aplicación",
+            slot=self.salir,
+        )
+
+    def _crear_menu_vistas(self, menu) -> None:
         # Registro de rostro
         self._add_action(
             menu,
@@ -136,16 +161,6 @@ class MainWindow(QtWidgets.QMainWindow):
             text="Encodings",
             tip="UMAP Encodings",
             slot=self.mostrarVistaVisualizarEncodings,
-        )
-
-        menu.addSeparator()
-
-        # Salir
-        self._add_action(
-            menu,
-            text="Salir",
-            tip="Salir de la aplicación",
-            slot=self.salir,
         )
 
     def _crear_menu_estilos(self, menu) -> None:
@@ -244,6 +259,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.destroyActual()
         self.pantallaMostrandose = nueva_clase_widget()
         self.animate_switch(self.pantallaMostrandose)
+
+    def mostrarVistaPreferencias(self) -> None:
+        print("Mostrando la vista de Preferencias")
+        self._cambiar_vista(Preferencias)
 
     def mostrarVistaEscaneo(self) -> None:
         print("Mostrando la vista de escaneo")
