@@ -676,48 +676,42 @@ class EscanerRostro(QtWidgets.QWidget):
                 pixmap_label = self.convertirFrameALabel(frame=frame)
                 pixmap = self.convertirFrameAPixmap(frame=frame)
                 
-                if self.cantidad_fotos < 3:
+                if self.cantidad_fotos < 5:
 
                     self.almacenarFotos(pixmap_label=pixmap_label, pixmap=pixmap, frame=frame)
 
-                    if self.cantidad_fotos < 3:
+                    if self.cantidad_fotos < 5:
                         return
 
                 self.botonGuardarFotoCambiarTexto(cambiar=1)
 
                 self.pausarCamara()
-                # rgb = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-                # h, w, ch = rgb.shape
-                # qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
-                # pixmap = QPixmap.fromImage(qimg)
+                
+                fotos_dict = {
+                    0: "Perfil Izquierdo",
+                    1: "Frente",
+                    2: "Perfil Derecho", 
+                    3: "Mirando Arriba",
+                    4: "Mirando Abajo"
+                }
                 
                 self.modal = NombrarFotoCapturada(
                     self, 
-                    #mandamos la foto que se mostrara en el modal
                     data= self.fotografias[1]["pixmap"], 
-                    #mandamos todas las fotos en crudo
                     imagenes=self.obtenerFotografias(), 
-                    #mandamos los encodings
-                    encoding_frente= self.generarEncodingPro(self.fotografias[1]["data"]),
-                    encoding_perfil_derecho= self.generarEncodingPro(self.fotografias[2]["data"]),
-                    encoding_perfil_izquierdo= self.generarEncodingPro(self.fotografias[0]["data"])
+                    encoding_frente= self.generarEncodingInsight(self.fotografias[1]["data"]),
+                    encoding_perfil_derecho= self.generarEncodingInsight(self.fotografias[2]["data"]),
+                    encoding_perfil_izquierdo= self.generarEncodingInsight(self.fotografias[0]["data"]),
+                    encoding_arriba= self.generarEncodingInsight(self.fotografias[3]["data"]),
+                    encoding_abajo= self.generarEncodingInsight(self.fotografias[4]["data"])
                 )
-                # self.modal.show()
                 self.resultado = self.modal.exec()
                 
                 if self.resultado == QDialog.Accepted:
-                    # self.fotografias = []
-
-                    # for item in range(self.cantidad_fotos):
-                    #     print('item: ', item)
-                    #     self.borrarFoto(item)
                     self.obtenerEncodingsDeFotos()
                     print("Aceptada")
                 elif self.resultado == QDialog.Rejected:
                     print("Rechazado")
-                        
-                    # self.modal.accept()
-
                 else:
                     print("Algo salio mal...")
 
@@ -937,20 +931,31 @@ class EscanerRostro(QtWidgets.QWidget):
         print(f"Tipo de pixmap_label: {type(pixmap_label)}")
         print(f"Tipo de pixmap: {type(pixmap)}")
         
+        guia_fotos = {
+            0: "Perfil Izquierdo",
+            1: "Frente",
+            2: "Perfil Derecho",
+            3: "Mirando Arriba",
+            4: "Mirando Abajo"
+        }
+        
+        # Etiqueta guía
+        guia_label = QLabel(guia_fotos.get(self.cantidad_fotos, f"Foto {self.cantidad_fotos + 1}"))
+        guia_label.setAlignment(Qt.AlignCenter)
+        self.layout_scroll_bar.addWidget(guia_label)
+        
         # Agregamos la imagen al layout
         self.layout_scroll_bar.addWidget(pixmap_label)
         
         boton_foto_camara = QPushButton("Borrar Foto")
-        boton_foto_camara.setGeometry(50, 50, 200, 40) # x=50, y=50, width=150, height=40
+        boton_foto_camara.setGeometry(50, 50, 200, 40)
         boton_foto_camara.setStatusTip("Elimina la foto de aquí")
         boton_foto_camara.clicked.connect(lambda _, idx=self.cantidad_fotos: self.borrarFoto(idx))
         self.layout_scroll_bar.addWidget(boton_foto_camara)
         
-        # self.frames_camera.append(self.frame_camera)
-
-        # self.fotografias[self.cantidad_fotos]["data"] = self.frame_camera
         self.fotografias[self.cantidad_fotos] = {
             "label": pixmap_label,
+            "guia": guia_label,
             "boton": boton_foto_camara,
             "data": frame,
             "pixmap": pixmap
@@ -1019,3 +1024,23 @@ class EscanerRostro(QtWidgets.QWidget):
         )[0]
         
         return encoding
+
+    def generarEncodingInsight(self, frame):
+        """Genera encoding usando InsightFace buffalo_l"""
+        if frame is None:
+            return None
+        
+        from insightface.app import FaceAnalysis
+        
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        app = FaceAnalysis(name='buffalo_l', providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        app.prepare(ctx_id=0, det_size=(640, 640))
+        
+        faces = app.get(rgb)
+        
+        if faces is None or len(faces) == 0:
+            print("No se detectó rostro")
+            return None
+        
+        return faces[0].embedding

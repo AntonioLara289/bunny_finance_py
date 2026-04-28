@@ -72,9 +72,27 @@ class AsistenciaPantalla(QtWidgets.QWidget):
             self.getPersonas = []
 
         try:
-            self.encodings = [json.loads(p[3]) for p in self.getPersonas]
-            self.names = [p[1] for p in self.getPersonas]
-            self.ids = [p[0] for p in self.getPersonas]
+            # Cargar 5 encodings por persona
+            self.encodings = []
+            self.names = []
+            self.ids = []
+            
+            for persona in self.getPersonas:
+                # encoding_1=Frente(3), encoding_2=Derecho(4), encoding_3=Izquierdo(2), encoding_4=Arriba(7), encoding_5=Abajo(6)
+                encodings_persona = [
+                    json.loads(persona[3]),  # frente
+                    json.loads(persona[4]),  # der
+                    json.loads(persona[2]),  # izq
+                    json.loads(persona[7]) if persona[7] else None,  # arriba
+                    json.loads(persona[6]) if persona[6] else None   # abajo
+                ]
+                for enc in encodings_persona:
+                    if enc is not None:
+                        self.encodings.append(enc)
+                        self.names.append(persona[1])
+                        self.ids.append(persona[0])
+                        
+            print(f"[DEBUG] Encodings cargados: {len(self.encodings)}")
         except Exception as e:
             print(f"[ERROR] Error procesando encodings/names/ids: {e}")
             self.encodings = []
