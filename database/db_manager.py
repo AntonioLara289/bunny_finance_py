@@ -63,8 +63,8 @@ class DBManager:
         "encoding_perfil_izquierdo TEXT NOT NULL, " \
         "encoding_frente TEXT NOT NULL, " \
         "encoding_perfil_derecho TEXT NOT NULL, " \
-        "encoding_abajo TEXT NOT NULL" \
-        "encoding_arriba TEXT NOT NULL" \
+        "encoding_arriba TEXT, " \
+        "encoding_abajo TEXT, " \
         "estatus INTEGER NOT NULL, " \
         "created_at TEXT NOT NULL)")
 
@@ -232,7 +232,7 @@ class DBManager:
         self.conn.commit()
         self.conn.close()
 
-def guardarPersonaData(self, 
+    def guardarPersonaData(self, 
                            nombre_persona, 
                            imagen, 
                            encoding_frente, 
