@@ -13,19 +13,12 @@ from ui.visualizacionEncodings import UMAPViewer
 from ui.escaneoRostro import EscanerRostro
 from ui.preferencias import Preferencias
 from ui.Historial import Historial
+from ui.insightFacesDemo import FaceRecognitionView
+from ui.PersonRegisterView import PersonRegisterView
 from ui.sesiones import Sesiones
 from ui.animated_menu import AnimatedMenu
 from ui.acerca import Acerca
 from database.db_manager import DBManager
-
-try:
-    import mediapipe as mp
-    print("MediaPipe importado correctamente")
-except ImportError as e:
-    print("Error de importación de MediaPipe:", e)
-except Exception as e:
-    print("Otro error con MediaPipe:", e)
-
 
 class MainWindow(QtWidgets.QMainWindow):
     titulo_ventana = "Bunny Detect"
@@ -163,6 +156,24 @@ class MainWindow(QtWidgets.QMainWindow):
             slot=self.mostrarVistaVisualizarEncodings,
         )
 
+        menu.addSeparator()
+
+        # InsightFaces
+        self._add_action(
+            menu,
+            text="InsightFaces",
+            tip="...",
+            slot=self.mostrarVistaInsightFaces,
+        )
+
+        # InsightFacesRegister
+        self._add_action(
+            menu,
+            text="InsightFaces Register",
+            tip="...",
+            slot=self.mostrarVistaInsightFacesRegister,
+        )
+
     def _crear_menu_estilos(self, menu) -> None:
         estilos = [
             ("Aero", "Estilo Frutiger Aero", "styles/style.qss"),
@@ -271,6 +282,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def mostrarVistaHistorial(self) -> None:
         print("Mostrando la vista de historial")
         self._cambiar_vista(Historial)
+
+    def mostrarVistaInsightFaces(self) -> None:
+        print("Mostrando la vista de visualización Encodings")
+        self._cambiar_vista(FaceRecognitionView)
+
+    def mostrarVistaInsightFacesRegister(self) -> None:
+        print("Mostrando la vista de visualización Encodings")
+        self._cambiar_vista(PersonRegisterView)
 
     def mostrarVistaVisualizarEncodings(self) -> None:
         print("Mostrando la vista de visualización Encodings")
