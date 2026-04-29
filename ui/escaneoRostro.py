@@ -27,7 +27,8 @@ from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
 # from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
 from ui.workers.camaraWorker import CameraWorker
-from ui.workers.faceRecognitionWorkerInsight import FaceRecognitionWorkerInsight
+# from ui.workers.faceRecognitionWorkerInsight import FaceRecognitionWorkerInsight
+from ui.workers.faceRecognitionWorkerInsight import FaceRecognitionInsightFaceWorker
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
 from ui.dialogs.camarasDisponiblesMultiple import CamarasDisponiblesMultiple
 
@@ -293,7 +294,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.face_thread = QThread()
 
         self.cam_worker = CameraWorker(self.cap)
-        self.face_worker = FaceRecognitionWorkerInsight(
+        self.face_worker = FaceRecognitionInsightFaceWorker(
             encodings_db=self.encodings_db,
             nombres_db=self.nombres_personas_db,
             ids_db=self.ids_personas_db

@@ -238,8 +238,8 @@ class DBManager:
                            encoding_frente, 
                            encoding_perfil_derecho, 
                            encoding_perfil_izquierdo,
-                           encoding_arriba=None,
-                           encoding_abajo=None
+                           encoding_arriba,
+                           encoding_abajo
                            ):
 
         self.conn = sqlite3.connect(self.db_path)
