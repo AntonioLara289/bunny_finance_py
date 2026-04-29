@@ -27,7 +27,7 @@ from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
 # from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
 from ui.workers.camaraWorker import CameraWorker
-from ui.workers.faceRecognitionWorker import FaceRecognitionWorkerRegistro
+from ui.workers.faceRecognitionWorkerInsight import FaceRecognitionWorkerInsight
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
 from ui.dialogs.camarasDisponiblesMultiple import CamarasDisponiblesMultiple
 
@@ -293,7 +293,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.face_thread = QThread()
 
         self.cam_worker = CameraWorker(self.cap)
-        self.face_worker = FaceRecognitionWorkerRegistro(
+        self.face_worker = FaceRecognitionWorkerInsight(
             encodings_db=self.encodings_db,
             nombres_db=self.nombres_personas_db,
             ids_db=self.ids_personas_db
@@ -490,24 +490,27 @@ class EscanerRostro(QtWidgets.QWidget):
         self.getPersonas = self.dbManager.getPersonas()
 
         for persona in self.getPersonas:
-            # 1. Cargamos los 3 encodings
-            izq = json.loads(persona[3])
-            fre = json.loads(persona[4])
-            der = json.loads(persona[5])
-            
-            # 2. USAR EXTEND en lugar de append con corchetes
-            # Extend añade los elementos de la lista uno por uno al nivel principal
-            self.encodings_db.extend([izq, fre, der])
-            
-            # 3. Hacemos lo mismo con nombres e IDs para que los índices coincidan
-            self.nombres_personas_db.extend([persona[1], persona[1], persona[1]])
-            self.ids_personas_db.extend([persona[0], persona[0], persona[0]])
+            # Cargar 5 encodings (frente, der, izq, arriba, abajo)
+            try:
+                fre = json.loads(persona[3]) if persona[3] else None  # frente
+                der = json.loads(persona[4]) if persona[4] else None  # der
+                izq = json.loads(persona[2]) if persona[2] else None  # izq
+                arriba = json.loads(persona[7]) if len(persona) > 7 and persona[7] else None
+                abajo = json.loads(persona[6]) if len(persona) > 6 and persona[6] else None
+                
+                encodings = [e for e in [fre, der, izq, arriba, abajo] if e is not None]
+                
+                if encodings:
+                    self.encodings_db.extend(encodings)
+                    self.nombres_personas_db.extend([persona[1]] * len(encodings))
+                    self.ids_personas_db.extend([persona[0]] * len(encodings))
+            except Exception as e:
+                print(f"Error cargando encoding: {e}")
+                continue
 
-        # MUY IMPORTANTE: Convertir a array de Numpy al final para el Worker
-        self.encodings_db = np.array(self.encodings_db)
-        
-        print(f"Base de datos cargada. Total de vectores: {len(self.encodings_db)}")
-        print(f"Forma del array (debe ser N, 128): {self.encodings_db.shape}")
+        if self.encodings_db:
+            self.encodings_db = np.array(self.encodings_db)
+            print(f"Total vectores cargados: {len(self.encodings_db)}")
 
     # def onDestroy(self, event):
     #     print("Cerrando escaneo de rostro")

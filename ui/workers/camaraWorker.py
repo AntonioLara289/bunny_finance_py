@@ -29,7 +29,7 @@ class CameraWorker(QObject):
                 if self.cap and self.cap.isOpened():
                     ret, frame = self.cap.read()
                     if ret:
-                        self.frame_ready.emit(self.aplicar_clahe(frame))
+                        self.frame_ready.emit(frame)
                         with QMutexLocker(self.mutex):
                             self.ultimo_frame = frame.copy()
                     else:
