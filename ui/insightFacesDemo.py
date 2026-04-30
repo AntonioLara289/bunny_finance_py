@@ -1,11 +1,13 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 from ui.top_bar import TopBar
 from log import log
+from ui.dialogs.camarasDisponibles import CamarasDisponibles
 
 import cv2
 import numpy as np
 import sqlite3
 from insightface.app import FaceAnalysis
+from cv2_enumerate_cameras import enumerate_cameras
 
 
 class FaceRecognitionView(QtWidgets.QWidget):
@@ -40,15 +42,37 @@ class FaceRecognitionView(QtWidgets.QWidget):
         self.conn = sqlite3.connect("faces.db")
         self.known_embeddings, self.known_names = self.load_database()
 
-        # Webcam
-        self.cap = cv2.VideoCapture(1)
-
-        # Timer
+        # Webcam selection
+        self.cap = None
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_frame)
-        self.timer.start(30)
 
+        # Show camera selection dialog
+        self.select_camera()
+
+    def select_camera(self):
+        camaras_disponibles = []
+        for camera_info in enumerate_cameras():
+            camara = {"index": camera_info.index, "nombre": camera_info.name}
+            camaras_disponibles.append(camara)
+            print(f"Index: {camera_info.index}, Name: {camera_info.name}")
+
+        camaras_disponibles = list({c['nombre']: c for c in camaras_disponibles}.values())
+
+        modal = CamarasDisponibles(camaras_disponibles=camaras_disponibles)
+        resultado = modal.exec()
+
+        if resultado == QtWidgets.QDialog.Accepted:
+            camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
+            print(f"Camera selected: {camara_seleccionada['nombre']}")
+        else:
+            print("Camera selection cancelled")
+            self.status_label.setText("No se seleccionó cámara")
+            return
+
+        self.cap = cv2.VideoCapture(camara_seleccionada["index"])
         self.status_label.setText("Buscando rostro...")
+        self.timer.start(30)
 
     # LOAD DATABASE
     def load_database(self):
@@ -131,7 +155,8 @@ class FaceRecognitionView(QtWidgets.QWidget):
 
     # CLEANUP
     def closeEvent(self, event):
-        self.cap.release()
+        if self.cap:
+            self.cap.release()
         self.timer.stop()
         self.conn.close()
         event.accept()
