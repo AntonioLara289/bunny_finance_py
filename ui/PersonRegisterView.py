@@ -3,11 +3,14 @@ from ui.top_bar import TopBar
 from log import log
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
 
+import os
 import cv2
 import sqlite3
 import numpy as np
 from insightface.app import FaceAnalysis
 from cv2_enumerate_cameras import enumerate_cameras
+
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "faces.db")
 
 
 def get_ctx_id():
@@ -170,7 +173,7 @@ class PersonRegisterView(QtWidgets.QWidget):
         self.app = FaceAnalysis()
         self.app.prepare(ctx_id=get_ctx_id())
 
-        self.conn = sqlite3.connect("faces.db")
+        self.conn = sqlite3.connect(DB_PATH)
         self.create_tables()
 
         self.cap = None

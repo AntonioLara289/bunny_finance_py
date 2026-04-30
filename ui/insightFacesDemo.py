@@ -3,11 +3,14 @@ from ui.top_bar import TopBar
 from log import log
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
 
+import os
 import cv2
 import numpy as np
 import sqlite3
 from insightface.app import FaceAnalysis
 from cv2_enumerate_cameras import enumerate_cameras
+
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "faces.db")
 
 
 def get_ctx_id():
@@ -93,7 +96,7 @@ class FaceRecognitionView(QtWidgets.QWidget):
         self.app = FaceAnalysis()
         self.app.prepare(ctx_id=get_ctx_id())
 
-        self.conn = sqlite3.connect("faces.db")
+        self.conn = sqlite3.connect(DB_PATH)
         self.known_embeddings, self.known_names = self.load_database()
 
         self.cap = None
