@@ -10,6 +10,13 @@ from insightface.app import FaceAnalysis
 from cv2_enumerate_cameras import enumerate_cameras
 
 
+def get_ctx_id():
+    import onnxruntime as ort
+    if 'CUDAExecutionProvider' in ort.get_available_providers():
+        return 0
+    return -1
+
+
 class PersonRegisterView(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -161,7 +168,7 @@ class PersonRegisterView(QtWidgets.QWidget):
         main_layout.addWidget(self.status)
 
         self.app = FaceAnalysis()
-        self.app.prepare(ctx_id=0)
+        self.app.prepare(ctx_id=get_ctx_id())
 
         self.conn = sqlite3.connect("faces.db")
         self.create_tables()
