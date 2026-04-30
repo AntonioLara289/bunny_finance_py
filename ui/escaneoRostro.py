@@ -14,21 +14,16 @@ from PySide6.QtGui import (
 )
 from PySide6.QtCore import (
     Qt,
-    QThread
+    QThread,
+    QTimer
 )
-import mediapipe as mp
-import face_recognition
 import cv2
 from cv2_enumerate_cameras import enumerate_cameras
 import json
 import numpy as np
-import math
+from insightface.app import FaceAnalysis
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
-# from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
-from ui.workers.camaraWorker import CameraWorker
-# from ui.workers.faceRecognitionWorkerInsight import FaceRecognitionWorkerInsight
-from ui.workers.faceRecognitionWorkerInsight import FaceRecognitionInsightFaceWorker
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
 from ui.dialogs.camarasDisponiblesMultiple import CamarasDisponiblesMultiple
 
@@ -114,25 +109,15 @@ class EscanerRostro(QtWidgets.QWidget):
         #La ocultamos ya que la mostrará y ocultara muchas veces
         self.boton_cerrar_camara.hide()
         self.boton_guardar_foto.hide()
-        # self.input_nombre_foto.hide()
 
-        # self.pantalla = QGuiApplication.primaryScreen()
-        # self.medidas_pantalla = self.pantalla.size()
+        # InsightFace - Inicializar modelo una sola vez
+        self.app = FaceAnalysis(name='buffalo_l')
+        self.app.prepare(ctx_id=0, det_size=(640, 640))
+        self.umbral_similitud = 0.45
 
-        # self.timer_update = QTimer()
-        # self.timer_update.timeout.connect(self.update)
-        # self.timer_update.start(30)
-        
-        self.mp_face_detection = mp.solutions.face_detection
-        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.8)
-        # self.mp_face_mesh = mp.solutions.face_mesh
-        # self.face_mesh = self.mp_face_mesh.FaceMesh(
-        #     static_image_mode=False,
-        #     max_num_faces=1,
-        #     refine_landmarks=True,   # Más preciso para ojos y boca
-        #     min_detection_confidence=0.5,
-        #     min_tracking_confidence=0.5
-        # )
+        # Timer para actualización de frames
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_frame)
 
         # if not self.known_encodings:
         #     print("No se encontró rostro en la imagen conocida.")
@@ -187,22 +172,17 @@ class EscanerRostro(QtWidgets.QWidget):
     
     def cerrarCamara(self):
         
-        # 1. Indicar a los Workers que detengan su bucle interno
-        if hasattr(self, 'cam_worker'):
-            self.cam_worker.stop() 
+        # 1. Detener timer
+        if hasattr(self, 'timer'):
+            self.timer.stop()
         
-        # 2. Esperar a que los hilos terminen de forma segura
-        if hasattr(self, 'cam_thread'):
-            self.cam_thread.quit()
-            self.cam_thread.wait() # Espera a que termine
-
-        if hasattr(self, 'face_thread'):
-            self.face_thread.quit()
-            self.face_thread.wait() # Espera a que termine
-            
-        # 3. Liberar la captura de OpenCV
-        if hasattr(self, 'cap') and self.cap.isOpened():
+        # 2. Liberar captura OpenCV
+        if hasattr(self, 'cap') and self.cap and self.cap.isOpened():
             self.cap.release()
+
+        self.cam_live.clear()
+        self.label_estado_reconocimiento.setText("Cámara cerrada")
+        self.label_estado_reconocimiento.setStyleSheet("")
             
         # 4. Actualizar UI
         self.boton_abrir_camara.show()
@@ -248,10 +228,8 @@ class EscanerRostro(QtWidgets.QWidget):
         camaras_disponibles = []
 
         for camera_info in enumerate_cameras():
-
             camara = {"index": camera_info.index, "nombre": camera_info.name}
             camaras_disponibles.append(camara)
-
             print(f"Index: {camera_info.index}, Name: {camera_info.name}")
 
         camaras_disponibles = list({c['nombre']: c for c in camaras_disponibles}.values())
@@ -260,29 +238,21 @@ class EscanerRostro(QtWidgets.QWidget):
         resultado = modal.exec()
 
         if resultado == QDialog.Accepted:
-            # print("Camara seleccionada Aceptada")
-
             camara_es_ip = modal.getTipoCamara()
             print('camara_es_ip: ', camara_es_ip)
             camara = ""
 
             if not camara_es_ip:
-                # camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
                 camara = camaras_disponibles[modal.getCurrentIndexCombox()]["index"]
 
             if camara_es_ip:
-                camara =  modal.getIpCamara()
+                camara = modal.getIpCamara()
                 
-
-            # camaras_seleccionadas = modal.getCurrentIndexCombox()
-            # print('camaras_seleccionadas: ', camaras_seleccionadas)
         elif resultado == QDialog.Rejected:
             print("Rechazado")
             self.cerrarCamara()
             return
                                 
-
-        # self.cap = cv2.VideoCapture("http://192.168.10.66:4747/video")
         print('camara: ', camara)
         self.cap = cv2.VideoCapture(camara)
 
@@ -290,38 +260,77 @@ class EscanerRostro(QtWidgets.QWidget):
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
 
-        self.cam_thread = QThread()
-        self.face_thread = QThread()
+        # Iniciar timer para frames (QTimer en vez de QThreads)
+        self.timer.start(33)  # ~30 FPS
 
-        self.cam_worker = CameraWorker(self.cap)
-        self.face_worker = FaceRecognitionInsightFaceWorker(
-            encodings_db=self.encodings_db,
-            nombres_db=self.nombres_personas_db,
-            ids_db=self.ids_personas_db
-        )
+    def cosine_similarity(self, a, b):
+        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-        # 3. Mover a hilos
-        self.cam_worker.moveToThread(self.cam_thread)
-        self.face_worker.moveToThread(self.face_thread)
+    def find_best_match(self, embedding):
+        if not self.encodings_db:
+            return "Desconocido", 0.0, None
 
-        # --- CONEXIONES CRÍTICAS ---
+        similitudes = np.dot(self.encodings_db, embedding)
+        idx_mejor = np.argmax(similitudes)
+        mejor_sim = similitudes[idx_mejor]
 
-        # Flujo: Cámara -> Reconocimiento -> UI
-        self.cam_worker.frame_ready.connect(self.face_worker.process_frame)
-        self.face_worker.frame_processed.connect(self.update_image)
-
-        # Señales de detección de persona
-        self.face_worker.persona_identificada.connect(self.on_persona_identificada)
-        self.face_worker.persona_nueva.connect(self.on_persona_nueva)
-
-        # Limpieza automática al terminar
-        self.cam_worker.finished.connect(self.cam_thread.quit)
-        self.face_worker.finished.connect(self.face_thread.quit)
+        if mejor_sim > self.umbral_similitud:
+            return self.nombres_personas_db[idx_mejor], mejor_sim * 100, self.ids_personas_db[idx_mejor]
         
-        # Iniciar
-        self.cam_thread.started.connect(self.cam_worker.run)
-        self.face_thread.start()
-        self.cam_thread.start()
+        return "Desconocido", mejor_sim * 100, None
+
+    def update_frame(self):
+        if not hasattr(self, 'cap') or self.cap is None:
+            return
+
+        ret, frame = self.cap.read()
+        if not ret:
+            return
+
+        faces = self.app.get(frame)
+
+        for face in faces:
+            nombre, similitud, persona_id = self.find_best_match(face.embedding)
+
+            box = face.bbox.astype(int)
+
+            if persona_id is not None:
+                color = (0, 255, 0)
+                label = f"{nombre} ({similitud:.1f}%)"
+                self.label_estado_reconocimiento.setText(f"Reconocido: {nombre} ({similitud:.1f}%)")
+                self.label_estado_reconocimiento.setStyleSheet("""
+                    QLabel {
+                        font-size: 16px;
+                        font-weight: bold;
+                        padding: 10px;
+                        border-radius: 5px;
+                        background-color: #d4edda;
+                        color: #155724;
+                    }
+                """)
+            else:
+                color = (0, 0, 255)
+                label = f"Desconocido ({similitud:.1f}%)"
+                self.label_estado_reconocimiento.setText("Nuevo rostro detectado")
+                self.label_estado_reconocimiento.setStyleSheet("""
+                    QLabel {
+                        font-size: 16px;
+                        font-weight: bold;
+                        padding: 10px;
+                        border-radius: 5px;
+                        background-color: #fff3cd;
+                        color: #856404;
+                    }
+                """)
+
+            cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, 2)
+            cv2.putText(frame, label, (box[0], box[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        qt_img = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+        self.cam_live.setPixmap(QPixmap.fromImage(qt_img))
 
     def on_persona_identificada(self, nombre, persona_id, similitud):
         self.label_estado_reconocimiento.setText(f"Ya registrado: {nombre} ({similitud:.1f}%)")
@@ -352,18 +361,13 @@ class EscanerRostro(QtWidgets.QWidget):
     def liberar_todos_los_recursos(self):
         """Libera TODOS los recursos antes de cerrar"""
         
-        # 1. Detener workers de cámara
-        if hasattr(self, 'cam_worker') and self.cam_worker:
-            print("Deteniendo worker de cámara...")
-            self.cam_worker.stop()
+        # 1. Detener timer
+        if hasattr(self, 'timer'):
+            self.timer.stop()
         
-        # 2. Detener worker de reconocimiento
-        if hasattr(self, 'face_worker') and self.face_worker:
-            print("Deteniendo worker de reconocimiento...")
-            self.face_worker.stop()
-        
-        # 3. Esperar que terminen los threads
-        self.esperar_threads()
+        # 2. Liberar cámara
+        if hasattr(self, 'cap') and self.cap and self.cap.isOpened():
+            self.cap.release()
         
         # 4. Liberar cámara física
         if hasattr(self, 'cap') and self.cap:
@@ -402,60 +406,53 @@ class EscanerRostro(QtWidgets.QWidget):
 
     def guardarFoto(self):
 
-        #obtener primero la foto del worker
-        if hasattr(self, 'cam_worker') and self.cam_worker:
-            frame = self.cam_worker.obtenerUltimoFrame()
-            if frame is not None:
-                
+        # Capturar frame directamente de la cámara
+        if hasattr(self, 'cap') and self.cap and self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if ret:
                 pixmap_label = self.convertirFrameALabel(frame=frame)
                 pixmap = self.convertirFrameAPixmap(frame=frame)
-                
-                if self.cantidad_fotos < 5:
 
-                    self.almacenarFotos(pixmap_label=pixmap_label, pixmap=pixmap, frame=frame)
+                # Captura automática de 5 fotos (frente, izq, der, arriba, abajo)
+                self.captura_automatica(frame)
 
-                    if self.cantidad_fotos < 5:
-                        return
+    def captura_automatica(self, frame):
+        """Captura automática de 5 fotos basado en guía"""
+        if self.cantidad_fotos < 5:
+            pixmap_label = self.convertirFrameALabel(frame=frame)
+            pixmap = self.convertirFrameAPixmap(frame=frame)
+            self.almacenarFotos(pixmap_label=pixmap_label, pixmap=pixmap, frame=frame)
 
-                self.botonGuardarFotoCambiarTexto(cambiar=1)
+            if self.cantidad_fotos < 5:
+                return
 
-                self.pausarCamara()
-                
-                self.modal = NombrarFotoCapturada(
-                    self, 
-                    data= self.fotografias[1]["pixmap"], 
-                    imagenes=self.obtenerFotografias(), 
-                    encoding_frente= self.generarEncodingInsight(self.fotografias[1]["data"]),
-                    encoding_perfil_derecho= self.generarEncodingInsight(self.fotografias[2]["data"]),
-                    encoding_perfil_izquierdo= self.generarEncodingInsight(self.fotografias[0]["data"]),
-                    encoding_arriba= self.generarEncodingInsight(self.fotografias[3]["data"]) if 3 in self.fotografias else None,
-                    encoding_abajo= self.generarEncodingInsight(self.fotografias[4]["data"]) if 4 in self.fotografias else None
-                )
-                # self.modal.show()
-                self.resultado = self.modal.exec()
-                
-                if self.resultado == QDialog.Accepted:
-                    # self.fotografias = []
+        # Ya tenemos las 5 fotos
+        if hasattr(self, 'timer'):
+            self.timer.stop()
+        
+        self.modal = NombrarFotoCapturada(
+            self, 
+            data=self.fotografias[1]["pixmap"], 
+            imagenes=self.obtenerFotografias(), 
+            encoding_frente=self.generarEncodingInsight(self.fotografias[1]["data"]),
+            encoding_perfil_derecho=self.generarEncodingInsight(self.fotografias[2]["data"]),
+            encoding_perfil_izquierdo=self.generarEncodingInsight(self.fotografias[0]["data"]),
+            encoding_arriba=self.generarEncodingInsight(self.fotografias[3]["data"]) if 3 in self.fotografias else None,
+            encoding_abajo=self.generarEncodingInsight(self.fotografias[4]["data"]) if 4 in self.fotografias else None
+        )
+        self.resultado = self.modal.exec()
+        
+        if self.resultado == QDialog.Accepted:
+            self.obtenerEncodingsDeFotos()
+            print("Aceptada")
+        elif self.resultado == QDialog.Rejected:
+            print("Rechazado")
+        else:
+            print("Algo salio mal...")
 
-                    # for item in range(self.cantidad_fotos):
-                    #     print('item: ', item)
-                    #     self.borrarFoto(item)
-                    self.obtenerEncodingsDeFotos()
-                    print("Aceptada")
-                elif self.resultado == QDialog.Rejected:
-                    print("Rechazado")
-                        
-                    # self.modal.accept()
-
-                else:
-                    print("Algo salio mal...")
-
-                for item in range(self.cantidad_fotos):
-                    print('item: ', item)
-                    self.borrarFoto(item)
-
-                self.reanudarCamara()
-            return None
+        for item in range(self.cantidad_fotos):
+            print('item: ', item)
+            self.borrarFoto(item)
             
     def borrarFoto(self, idx):
         if idx in self.fotografias:
@@ -491,13 +488,12 @@ class EscanerRostro(QtWidgets.QWidget):
         self.getPersonas = self.dbManager.getPersonas()
 
         for persona in self.getPersonas:
-            # Cargar 5 encodings (frente, der, izq, arriba, abajo)
             try:
-                fre = json.loads(persona[3]) if persona[3] else None  # frente
-                der = json.loads(persona[4]) if persona[4] else None  # der
-                izq = json.loads(persona[2]) if persona[2] else None  # izq
-                arriba = json.loads(persona[7]) if len(persona) > 7 and persona[7] else None
-                abajo = json.loads(persona[6]) if len(persona) > 6 and persona[6] else None
+                fre = np.array(json.loads(persona[3])) if persona[3] else None
+                der = np.array(json.loads(persona[4])) if persona[4] else None
+                izq = np.array(json.loads(persona[2])) if persona[2] else None
+                arriba = np.array(json.loads(persona[7])) if len(persona) > 7 and persona[7] else None
+                abajo = np.array(json.loads(persona[6])) if len(persona) > 6 and persona[6] else None
                 
                 encodings = [e for e in [fre, der, izq, arriba, abajo] if e is not None]
                 
@@ -511,7 +507,7 @@ class EscanerRostro(QtWidgets.QWidget):
 
         if self.encodings_db:
             self.encodings_db = np.array(self.encodings_db)
-            print(f"Total vectores cargados: {len(self.encodings_db)}")
+            print(f"Total vectores cargados: {len(self.encodings_db)}, dimensión: {self.encodings_db.shape if len(self.encodings_db) > 0 else 'N/A'}")
 
     # def onDestroy(self, event):
     #     print("Cerrando escaneo de rostro")
