@@ -6,13 +6,9 @@ from PySide6.QtWidgets import (
 from PySide6 import QtWidgets, QtCore
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
-try:
-    from ui.camaraReconocimientoWidget import CameraRecognitionWidget
-except ImportError as e:
-    print("[ERROR] No se pudo importar CameraRecognitionWidget:", e)
-    CameraRecognitionWidget = None
+from ui.camaraInsightFaceWidget import CameraInsightFaceWidget, DB_PATH
 from database.db_manager import DBManager
-import json
+import sqlite3
 import time
 from datetime import datetime
 from log import log
@@ -64,47 +60,26 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         self.dbManager = DBManager()
         self.session_name = session_name
         self.session_id = session_id
-        try:
-            self.getPersonas = self.dbManager.getPersonas()
-            print(f"[DEBUG] Personas obtenidas: {self.getPersonas}")
-        except Exception as e:
-            print(f"[ERROR] Error obteniendo personas de la DB: {e}")
-            self.getPersonas = []
 
-        try:
-            self.encodings = [json.loads(p[3]) for p in self.getPersonas]
-            self.names = [p[1] for p in self.getPersonas]
-            self.ids = [p[0] for p in self.getPersonas]
-        except Exception as e:
-            print(f"[ERROR] Error procesando encodings/names/ids: {e}")
-            self.encodings = []
-            self.names = []
-            self.ids = []
+        self.face_conn = sqlite3.connect(DB_PATH)
+        self.face_cursor = self.face_conn.cursor()
+        self.face_cursor.execute("""
+            SELECT persons.id, persons.name
+            FROM persons
+        """)
+        self.getPersonas = self.face_cursor.fetchall()
 
-        if CameraRecognitionWidget is not None:
+        self.camera_widget = CameraInsightFaceWidget()
+        self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.camera_widget.setMinimumHeight(320)
+        cam_layout.addWidget(self.camera_widget)
+        self.camera_widget.personaConfirmada.connect(self.actualizarAsistencia)
+        main_layout.addWidget(cam_frame)
+        if auto_start_camera:
             try:
-                self.camera_widget = CameraRecognitionWidget(
-                    encodings_db=self.encodings,
-                    names_db=self.names,
-                    ids_db=self.ids
-                )
-                self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-                self.camera_widget.setMinimumHeight(320)
-                cam_layout.addWidget(self.camera_widget)
-                #self.camera_widget.faceRecognized.connect(self.actualizarAsistencia)
-                main_layout.addWidget(cam_frame)
-                # Auto-start camera if requested
-                if auto_start_camera:
-                    try:
-                        self.camera_widget.start_camera()
-                    except Exception as e:
-                        print(f"[ERROR] No se pudo iniciar la cámara automáticamente: {e}")
+                self.camera_widget.start_camera()
             except Exception as e:
-                print(f"[ERROR] Error creando CameraRecognitionWidget: {e}")
-        else:
-            error_label = QLabel("No se pudo cargar el widget de cámara.")
-            cam_layout.addWidget(error_label)
-            main_layout.addWidget(cam_frame)
+                print(f"[ERROR] No se pudo iniciar la cámara automáticamente: {e}")
 
         # Tabla
         table_frame = QFrame()
@@ -113,12 +88,8 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         table_label = QLabel("Lista de personas")
         table_layout.addWidget(table_label)
 
-        try:
-            rows = self.dbManager.getRows()
-        except Exception as e:
-            print(f"[ERROR] Error obteniendo filas para la tabla: {e}")
-            rows = len(self.getPersonas)
-        self.table = QTableWidget(rows, 4)
+        num_rows = len(self.getPersonas)
+        self.table = QTableWidget(num_rows, 4)
         self.table.setHorizontalHeaderLabels([
             "ID", "Nombre", "Similitud", "Asistencia"
         ])
@@ -130,13 +101,12 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         # ID → ROW MAP (Busqueda O(1))
         self.id_to_row = {}
 
-        for row_idx, persona in enumerate(self.getPersonas):
+        for row_idx, (persona_id, persona_name) in enumerate(self.getPersonas):
             try:
-                persona_id = persona[0]
                 self.id_to_row[persona_id] = row_idx
 
                 self.table.setItem(row_idx, 0, QTableWidgetItem(str(persona_id)))
-                self.table.setItem(row_idx, 1, QTableWidgetItem(str(persona[1])))
+                self.table.setItem(row_idx, 1, QTableWidgetItem(str(persona_name)))
                 self.table.setItem(row_idx, 2, QTableWidgetItem("0%"))
 
                 combo = QComboBox()
@@ -164,27 +134,23 @@ class AsistenciaPantalla(QtWidgets.QWidget):
 
     # Logica de asistencia
     def actualizarAsistencia(self, name, id_, similarity):
-        # Salida prematura
         if id_ in self.attendance_given:
             return
 
         now = time.time()
 
-        # UI THROTTLE
         last_ui = self.last_ui_update.get(id_, 0)
         if now - last_ui < self.UI_UPDATE_INTERVAL:
             return
         self.last_ui_update[id_] = now
 
-        # O(1) Busqueda
         row = self.id_to_row.get(id_)
         if row is None:
             return
 
         similarity_item = self.table.item(row, 2)
-        similarity_item.setText(f"{similarity:.2f}%")
+        similarity_item.setText(f"{similarity:.1f}%")
 
-        # Logica
         if similarity >= self.SIMILARITY_THRESHOLD:
             if id_ not in self.recognition_timers:
                 self.recognition_timers[id_] = now
@@ -197,7 +163,6 @@ class AsistenciaPantalla(QtWidgets.QWidget):
                         self.attendance_given.add(id_)
                         log.push(f"Asistencia registrada para {name}")
         else:
-            # Prevenir spam de timers
             start = self.recognition_timers.get(id_)
             if start and now - start > self.TIMER_GRACE_PERIOD:
                 del self.recognition_timers[id_]
@@ -273,12 +238,16 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         wb.save(path)
 
     def closeEvent(self, event):
-        # On close, stop camera and export automatically if session name provided
         try:
-            # Stop camera safely
             if getattr(self, 'camera_widget', None):
                 try:
                     self.camera_widget.stop_camera()
+                except Exception:
+                    pass
+
+            if getattr(self, 'face_conn', None):
+                try:
+                    self.face_conn.close()
                 except Exception:
                     pass
 
