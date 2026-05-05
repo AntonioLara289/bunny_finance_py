@@ -100,3 +100,14 @@ class FaceRecognitionInsightFaceWorker(QObject):
 
     def stop(self):
         self._running = False
+
+    def getEncoding(self, frame):
+        
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        face = self.app.get(rgb)
+
+        if not face:
+            return None
+        else:
+            return face

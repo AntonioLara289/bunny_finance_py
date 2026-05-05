@@ -113,7 +113,7 @@ class EscanerRostro(QtWidgets.QWidget):
         # InsightFace - Inicializar modelo una sola vez
         self.app = FaceAnalysis(name='buffalo_l')
         self.app.prepare(ctx_id=0, det_size=(640, 640))
-        self.umbral_similitud = 0.45
+        self.umbral_similitud = 0.50
 
         # Timer para actualización de frames
         self.timer = QTimer()
@@ -267,12 +267,21 @@ class EscanerRostro(QtWidgets.QWidget):
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
     def find_best_match(self, embedding):
-        if not self.encodings_db:
+        if not self.encodings_db.all():
+            print('[DEBUG] No hay encodings en DB')
             return "Desconocido", 0.0, None
 
-        similitudes = np.dot(self.encodings_db, embedding)
+        # Asegurar que el embedding de entrada esté normalizado
+        embedding_norm = embedding / np.linalg.norm(embedding)
+        
+        # Normalizar los encodings de la DB también (por seguridad)
+        encodings_norm = self.encodings_db / np.linalg.norm(self.encodings_db, axis=1, keepdims=True)
+        
+        similitudes = np.dot(encodings_norm, embedding_norm)
         idx_mejor = np.argmax(similitudes)
         mejor_sim = similitudes[idx_mejor]
+
+        print(f'[DEBUG] Mejor coincidencia: {self.nombres_personas_db[idx_mejor]} ({mejor_sim:.4f}), ¿Pasa umbral {self.umbral_similitud}?: {mejor_sim > self.umbral_similitud}')
 
         if mejor_sim > self.umbral_similitud:
             return self.nombres_personas_db[idx_mejor], mejor_sim * 100, self.ids_personas_db[idx_mejor]
@@ -288,9 +297,13 @@ class EscanerRostro(QtWidgets.QWidget):
             return
 
         faces = self.app.get(frame)
+        
+        if not faces:
+            print('No se detectaron rostros')
+            return
 
         for face in faces:
-            nombre, similitud, persona_id = self.find_best_match(face.embedding)
+            nombre, similitud, persona_id = self.find_best_match(face.normed_embedding)
 
             box = face.bbox.astype(int)
 
@@ -485,15 +498,29 @@ class EscanerRostro(QtWidgets.QWidget):
         self.nombres_personas_db = []
         self.ids_personas_db = []
 
+        print(f'Cargando personas de DB...')
         self.getPersonas = self.dbManager.getPersonas()
+        print(f'  Total personas recuperadas: {len(self.getPersonas)}')
 
         for persona in self.getPersonas:
             try:
-                fre = np.array(json.loads(persona[3])) if persona[3] else None
-                der = np.array(json.loads(persona[4])) if persona[4] else None
-                izq = np.array(json.loads(persona[2])) if persona[2] else None
-                arriba = np.array(json.loads(persona[7])) if len(persona) > 7 and persona[7] else None
-                abajo = np.array(json.loads(persona[6])) if len(persona) > 6 and persona[6] else None
+                # Mapeo CORRECTO de índices según la tabla personas:
+                # [0]=id, [1]=nombre, [2]=imagen, [3]=izq, [4]=frente, [5]=der, [6]=arriba, [7]=abajo
+                def cargar_encoding(campo):
+                    if campo and campo.strip():
+                        try:
+                            arr = np.array(json.loads(campo))
+                            if arr.shape[0] == 512:
+                                return arr / np.linalg.norm(arr)  # Normalizar
+                        except (json.JSONDecodeError, ValueError) as e:
+                            print(f'    Error parseando encoding: {e}')
+                    return None
+
+                izq = cargar_encoding(persona[3]) if len(persona) > 3 else None
+                fre = cargar_encoding(persona[4]) if len(persona) > 4 else None
+                der = cargar_encoding(persona[5]) if len(persona) > 5 else None
+                arriba = cargar_encoding(persona[6]) if len(persona) > 6 else None
+                abajo = cargar_encoding(persona[7]) if len(persona) > 7 else None
                 
                 encodings = [e for e in [fre, der, izq, arriba, abajo] if e is not None]
                 
@@ -501,13 +528,19 @@ class EscanerRostro(QtWidgets.QWidget):
                     self.encodings_db.extend(encodings)
                     self.nombres_personas_db.extend([persona[1]] * len(encodings))
                     self.ids_personas_db.extend([persona[0]] * len(encodings))
+                    print(f'  Persona: {persona[1]}, encodings cargados: {len(encodings)}')
+                else:
+                    print(f'  ADVERTENCIA: Persona {persona[1]} no tiene encodings válidos')
             except Exception as e:
                 print(f"Error cargando encoding: {e}")
                 continue
 
         if self.encodings_db:
             self.encodings_db = np.array(self.encodings_db)
-            print(f"Total vectores cargados: {len(self.encodings_db)}, dimensión: {self.encodings_db.shape if len(self.encodings_db) > 0 else 'N/A'}")
+            print(f'Total vectores cargados: {len(self.encodings_db)}, dimensión: {self.encodings_db.shape}')
+            print(f'Norma promedio de encodings: {np.mean([np.linalg.norm(e) for e in self.encodings_db]):.4f}')
+        else:
+            print('¡ADVERTENCIA! No se cargaron encodings de la DB')
 
     # def onDestroy(self, event):
     #     print("Cerrando escaneo de rostro")
@@ -531,15 +564,21 @@ class EscanerRostro(QtWidgets.QWidget):
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             # Detectar rostro
-            locations = face_recognition.face_locations(rgb)
+            # locations = face_recognition.face_locations(rgb)
 
-            if len(locations) == 0:
+            # if len(locations) == 0:
+            #     print(f"No se detectó rostro en la foto {idx}")
+            #     continue
+
+            face = self.app.get(rgb)
+
+            if not face: 
                 print(f"No se detectó rostro en la foto {idx}")
                 continue
 
             # Obtener encoding
-            encoding = face_recognition.face_encodings(rgb, locations)[0]
-            encodings.append(encoding)
+            # encoding = face_recognition.face_encodings(rgb, locations)[0]
+            encodings.append(face[0].normed_embedding)
 
         return encodings
 
@@ -760,24 +799,20 @@ class EscanerRostro(QtWidgets.QWidget):
         return encoding
 
     def generarEncodingInsight(self, frame):
-        """Genera encoding usando InsightFace buffalo_l"""
+        """Genera encoding usando InsightFace buffalo_l - YA NORMALIZADO"""
         if frame is None:
             return None
         
-        from insightface.app import FaceAnalysis
-        
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        app = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
-        app.prepare(ctx_id=0, det_size=(640, 640))
-        
-        faces = app.get(rgb)
+        faces = self.app.get(rgb)
         
         if faces is None or len(faces) == 0:
             print("No se detectó rostro")
             return None
         
-        return faces[0].embedding
+        # IMPORTANTE: normed_embedding YA ESTÁ NORMALIZADO (norma = 1.0)
+        return faces[0].normed_embedding
         
     # def abrirCamara(self):
     #     self.boton_abrir_camara.hide()

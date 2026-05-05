@@ -32,7 +32,7 @@ class NombrarFotoCapturada(QDialog):
         self.setWindowTitle("Nombre la foto capturada")
 
         self.data = data
-        self.imagenes = imagenes
+        self.imagenes = None
         self.encodings = {
             "encoding_frente": encoding_frente,
             "encoding_derecho": encoding_perfil_derecho,
@@ -153,13 +153,13 @@ class NombrarFotoCapturada(QDialog):
                 json_abajo
             )
 
-            output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
+            # output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
 
-            for imagen in self.imagenes:
-                try:
-                    cv2.imwrite(output_path, imagen)
-                except TypeError:
-                    print("Error al guardar:", TypeError)
+            # for imagen in self.imagenes:
+            #     try:
+            #         cv2.imwrite(output_path, imagen)
+            #     except TypeError:
+            #         print("Error al guardar:", TypeError)
 
             self.accept()
 

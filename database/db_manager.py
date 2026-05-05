@@ -7,7 +7,7 @@ class DBManager:
 
     db_path = None
 
-    def __init__(self, db_path="database/bunny_detect_v4.db"):
+    def __init__(self, db_path="database/bunny_detect_v5.db"):
         self.conn = sqlite3.connect(db_path)
         self.db_path = db_path
         self.cursor = self.conn.cursor()
