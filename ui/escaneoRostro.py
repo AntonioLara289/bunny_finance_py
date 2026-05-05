@@ -267,7 +267,7 @@ class EscanerRostro(QtWidgets.QWidget):
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
     def find_best_match(self, embedding):
-        if not self.encodings_db.all():
+        if len(self.encodings_db) == 0:
             print('[DEBUG] No hay encodings en DB')
             return "Desconocido", 0.0, None
 
