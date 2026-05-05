@@ -63,10 +63,11 @@ class FaceRecognitionView(QtWidgets.QWidget):
 
         self.image_label = QtWidgets.QLabel()
         self.image_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_label.setMinimumSize(640, 480)
+        self.image_label.setMinimumSize(320, 240)
+        self.image_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.image_label.setStyleSheet("background-color: #000; border-radius: 8px;")
         self.image_label.setScaledContents(False)
-        video_layout.addWidget(self.image_label)
+        video_layout.addWidget(self.image_label, stretch=1)
 
         main_layout.addWidget(self.video_container, stretch=1)
 

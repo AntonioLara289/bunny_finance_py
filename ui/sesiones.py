@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTime
 from PySide6.QtCore import Qt
 from ui.top_bar import TopBar
+from ui.asistencia import AsistenciaPantalla
 from database.db_manager import DBManager
 from log import log
 
@@ -93,18 +94,22 @@ class Sesiones(QWidget):
         self.btn_crear = QPushButton("Crear sesión")
         self.btn_modificar = QPushButton("Modificar sesión")
         self.btn_eliminar = QPushButton("Eliminar sesión")
+        self.btn_asistencia = QPushButton("Tomar asistencia")
 
         self.btn_crear.setToolTip("Crear nueva sesión")
         self.btn_modificar.setToolTip("Modificar la sesión seleccionada")
         self.btn_eliminar.setToolTip("Eliminar la sesión seleccionada")
+        self.btn_asistencia.setToolTip("Abrir pantalla de asistencia para la sesión seleccionada")
 
         self.btn_crear.clicked.connect(self.crear_sesion)
         self.btn_modificar.clicked.connect(self.modificar_sesion)
         self.btn_eliminar.clicked.connect(self.eliminar_sesion)
+        self.btn_asistencia.clicked.connect(self.abrir_asistencia)
 
         layout_botones.addWidget(self.btn_crear)
         layout_botones.addWidget(self.btn_modificar)
         layout_botones.addWidget(self.btn_eliminar)
+        layout_botones.addWidget(self.btn_asistencia)
         layout_botones.addStretch()
 
         # Tabla
@@ -198,21 +203,17 @@ class Sesiones(QWidget):
         if fila < 0:
             return
 
-        # Obtener id_sesion
         id_sesion = self.row_id_map.get(fila)
         if not id_sesion:
             return
 
-        # Eliminar de BD
         try:
             self.db.eliminarSesion(id_sesion)
         except Exception:
             return
 
-        # Eliminar de tabla
         self.tabla_sesiones.removeRow(fila)
 
-        # Actualizar row_id_map
         new_map = {}
         for row in range(self.tabla_sesiones.rowCount()):
             if row in self.row_id_map:
@@ -220,3 +221,32 @@ class Sesiones(QWidget):
             elif row + 1 in self.row_id_map:
                 new_map[row] = self.row_id_map[row + 1]
         self.row_id_map = new_map
+
+    def abrir_asistencia(self):
+        fila = self.tabla_sesiones.currentRow()
+        if fila < 0:
+            return
+
+        id_sesion = self.row_id_map.get(fila)
+        if not id_sesion:
+            return
+
+        nombre_item = self.tabla_sesiones.item(fila, 0)
+        nombre = nombre_item.text() if nombre_item else "Sin nombre"
+
+        window = self.window()
+        if hasattr(window, 'stack') and hasattr(window, '_cambiar_vista'):
+            window.destroyActual()
+            window.pantallaMostrandose = AsistenciaPantalla(
+                session_name=nombre,
+                auto_start_camera=True,
+                session_id=id_sesion
+            )
+            window.animate_switch(window.pantallaMostrandose)
+        else:
+            vista = AsistenciaPantalla(
+                session_name=nombre,
+                auto_start_camera=True,
+                session_id=id_sesion
+            )
+            vista.showMaximized()

@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QSizePolicy
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 import os
@@ -35,9 +35,10 @@ class CameraInsightFaceWidget(QWidget):
         self.layout = QVBoxLayout(self)
         self.cam_label = QLabel("Cámara apagada", self)
         self.cam_label.setAlignment(Qt.AlignCenter)
-        self.cam_label.setMinimumHeight(320)
+        self.cam_label.setMinimumSize(320, 240)
+        self.cam_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.cam_label.setStyleSheet("background-color: #000; border-radius: 8px;")
-        self.layout.addWidget(self.cam_label)
+        self.layout.addWidget(self.cam_label, stretch=1)
 
         self.btn_open = QPushButton("Abrir cámara", self)
         self.btn_close = QPushButton("Cerrar cámara", self)
@@ -62,6 +63,7 @@ class CameraInsightFaceWidget(QWidget):
         self.confirmations_needed = 2
 
         self.confirmations = {}
+        self.confirmed_set = set()
         self.frame_counter = 0
         self.detection_interval = 3
         self.last_faces = []
@@ -103,6 +105,7 @@ class CameraInsightFaceWidget(QWidget):
         self.btn_close.show()
         self.timer.start(30)
         self.confirmations.clear()
+        self.confirmed_set.clear()
         self.last_faces = []
         self.frame_counter = 0
 
@@ -120,6 +123,7 @@ class CameraInsightFaceWidget(QWidget):
         self.btn_open.show()
         self.btn_close.hide()
         self.confirmations.clear()
+        self.confirmed_set.clear()
         self.last_faces = []
 
     def find_match_batch(self, embedding):
@@ -165,7 +169,8 @@ class CameraInsightFaceWidget(QWidget):
                     self.confirmations[id_] = {"count": 0, "name": name}
                 self.confirmations[id_]["count"] += 1
 
-                if self.confirmations[id_]["count"] >= self.confirmations_needed:
+                if self.confirmations[id_]["count"] >= self.confirmations_needed and id_ not in self.confirmed_set:
+                    self.confirmed_set.add(id_)
                     sim_percent = sim * 100
                     self.personaConfirmada.emit(name, id_, sim_percent)
                     print(f"PERSONA CONFIRMADA: {name} - {sim_percent:.1f}%")
