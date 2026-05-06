@@ -14,9 +14,16 @@ DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 def get_ctx_id():
     import onnxruntime as ort
-    if 'CUDAExecutionProvider' in ort.get_available_providers():
+    providers = ort.get_available_providers()
+    if 'CUDAExecutionProvider' in providers:
+        print("[INFO] InsightFace: Using CUDA GPU acceleration")
         return 0
-    return -1
+    elif 'DmlExecutionProvider' in providers:
+        print("[INFO] InsightFace: Using DirectML (AMD/Integrated GPU)")
+        return 0
+    else:
+        print("[INFO] InsightFace: Using CPU mode")
+        return -1
 
 
 class CameraInsightFaceWidget(QWidget):
