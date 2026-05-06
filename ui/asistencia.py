@@ -9,10 +9,12 @@ from openpyxl.utils import get_column_letter
 from ui.camaraInsightFaceWidget import CameraInsightFaceWidget, DB_PATH
 from database.db_manager import DBManager
 import sqlite3
+import numpy as np
 import time
 from datetime import datetime
 from log import log
 
+# Status
 asistencias_status = {1: "Asistió", 0: "No asistió"}
 
 class AsistenciaPantalla(QtWidgets.QWidget):
@@ -23,7 +25,7 @@ class AsistenciaPantalla(QtWidgets.QWidget):
 
         # Configuracion
         self.SIMILARITY_THRESHOLD = 60.0
-        self.REQUIRED_SECONDS = 5.0
+        self.REQUIRED_SECONDS = 2.0
 
         # Variables de rendimiento
         self.UI_UPDATE_INTERVAL = 0.3  # segundos
@@ -64,12 +66,41 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         self.face_conn = sqlite3.connect(DB_PATH)
         self.face_cursor = self.face_conn.cursor()
         self.face_cursor.execute("""
-            SELECT persons.id, persons.name
-            FROM persons
+            SELECT id, name FROM persons
         """)
-        self.getPersonas = self.face_cursor.fetchall()
+        persons_raw = self.face_cursor.fetchall()
 
-        self.camera_widget = CameraInsightFaceWidget()
+        # Group by name: one row per unique name, track all IDs
+        self.name_to_ids = {}
+        for pid, name in persons_raw:
+            if name not in self.name_to_ids:
+                self.name_to_ids[name] = {"ids": [], "display_id": pid}
+            self.name_to_ids[name]["ids"].append(pid)
+
+        self.getPersonas = list(self.name_to_ids.items())  # [(name, info_dict), ...]
+
+        # Load all encodings for the camera widget (can be multiple per person)
+        self.face_cursor.execute("""
+            SELECT persons.id, persons.name, encodings.embedding
+            FROM encodings
+            JOIN persons ON persons.id = encodings.person_id
+        """)
+        encodings_data = self.face_cursor.fetchall()
+
+        encodings_db = []
+        names_db = []
+        ids_db = []
+        for person_id, name, blob in encodings_data:
+            emb = np.frombuffer(blob, dtype=np.float32)
+            encodings_db.append(emb)
+            names_db.append(name)
+            ids_db.append(person_id)
+
+        self.camera_widget = CameraInsightFaceWidget(
+            encodings_db=encodings_db,
+            names_db=names_db,
+            ids_db=ids_db
+        )
         self.camera_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.camera_widget.setMinimumHeight(320)
         cam_layout.addWidget(self.camera_widget)
@@ -99,14 +130,17 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 
         # ID → ROW MAP (Busqueda O(1))
-        self.id_to_row = {}
+        # Now using name as key (unique per person)
+        self.name_to_row = {}
+        self.id_to_row = {}  # maps primary display_id → row
 
-        for row_idx, (persona_id, persona_name) in enumerate(self.getPersonas):
+        for row_idx, (name, info) in enumerate(self.getPersonas):
             try:
-                self.id_to_row[persona_id] = row_idx
+                self.name_to_row[name] = row_idx
+                self.id_to_row[info["display_id"]] = row_idx
 
-                self.table.setItem(row_idx, 0, QTableWidgetItem(str(persona_id)))
-                self.table.setItem(row_idx, 1, QTableWidgetItem(str(persona_name)))
+                self.table.setItem(row_idx, 0, QTableWidgetItem(str(info["display_id"])))
+                self.table.setItem(row_idx, 1, QTableWidgetItem(str(name)))
                 self.table.setItem(row_idx, 2, QTableWidgetItem("0%"))
 
                 combo = QComboBox()
@@ -134,17 +168,22 @@ class AsistenciaPantalla(QtWidgets.QWidget):
 
     # Logica de asistencia
     def actualizarAsistencia(self, name, id_, similarity):
-        if id_ in self.attendance_given:
+        # Get the canonical display_id for this person (by name)
+        if name not in self.name_to_ids:
+            return
+        display_id = self.name_to_ids[name]["display_id"]
+
+        if display_id in self.attendance_given:
             return
 
         now = time.time()
 
-        last_ui = self.last_ui_update.get(id_, 0)
+        last_ui = self.last_ui_update.get(display_id, 0)
         if now - last_ui < self.UI_UPDATE_INTERVAL:
             return
-        self.last_ui_update[id_] = now
+        self.last_ui_update[display_id] = now
 
-        row = self.id_to_row.get(id_)
+        row = self.name_to_row.get(name)
         if row is None:
             return
 
@@ -152,20 +191,20 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         similarity_item.setText(f"{similarity:.1f}%")
 
         if similarity >= self.SIMILARITY_THRESHOLD:
-            if id_ not in self.recognition_timers:
-                self.recognition_timers[id_] = now
+            if display_id not in self.recognition_timers:
+                self.recognition_timers[display_id] = now
             else:
-                elapsed = now - self.recognition_timers[id_]
+                elapsed = now - self.recognition_timers[display_id]
                 if elapsed >= self.REQUIRED_SECONDS:
                     combo = self.table.cellWidget(row, 3)
                     if combo:
                         combo.setCurrentText("Asistió")
-                        self.attendance_given.add(id_)
+                        self.attendance_given.add(display_id)
                         log.push(f"Asistencia registrada para {name}")
         else:
-            start = self.recognition_timers.get(id_)
+            start = self.recognition_timers.get(display_id)
             if start and now - start > self.TIMER_GRACE_PERIOD:
-                del self.recognition_timers[id_]
+                del self.recognition_timers[display_id]
 
     # Exportacion
     def exportarExcel(self):

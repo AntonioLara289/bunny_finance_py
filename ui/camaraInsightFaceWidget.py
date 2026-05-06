@@ -8,6 +8,7 @@ from insightface.app import FaceAnalysis
 from cv2_enumerate_cameras import enumerate_cameras
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
 
+# BASE DE DATOS UTILIZADA
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "faces.db")
 
 

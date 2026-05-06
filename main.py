@@ -5,8 +5,8 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 from ui.main_window import MainWindow
 
+# Carga un archivo .qss y aplicar el estilo
 def load_stylesheet(app: QApplication, filename: str) -> None:
-    # Carga un archivo .qss y aplicar el estilo
     import traceback
 
     try:
