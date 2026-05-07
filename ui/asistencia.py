@@ -13,7 +13,7 @@ import numpy as np
 import time
 from datetime import datetime
 from log import log
-
+30
 # Status
 asistencias_status = {1: "Asistió", 0: "No asistió"}
 

@@ -1,13 +1,13 @@
+import os
+import sqlite3
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QCheckBox, QPushButton, QHBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import umap
 import numpy as np
-import ast
 import matplotlib.cm as cm
 import math
-from database.db_manager import DBManager
 
 class UMAPViewer(QtWidgets.QWidget):
     def __init__(self):
@@ -76,7 +76,8 @@ class UMAPViewer(QtWidgets.QWidget):
         main_layout.addWidget(self.canvas, stretch=1)
 
         # Base de datos y datos para muestreo
-        self.dbManager = DBManager()
+        db_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.db_path = os.path.join(db_dir, "faces.db")
         self.encodings = []
         self.names = []
         self.embedding = None
@@ -102,24 +103,29 @@ class UMAPViewer(QtWidgets.QWidget):
 
     # Carga de informacion
     def cargar_personas(self):
-        rows = self.dbManager.getPersonas()
-
         self.encodings.clear()
         self.names.clear()
 
-        for row in rows:
-            try:
-                nombre = row[1]
-                encoding = np.array(ast.literal_eval(row[3]), dtype=np.float32)
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
 
-                if encoding.ndim != 1:
+            cursor.execute("""
+                SELECT persons.name, encodings.embedding
+                FROM encodings
+                JOIN persons ON persons.id = encodings.person_id
+            """)
+
+            for name, blob in cursor.fetchall():
+                emb = np.frombuffer(blob, dtype=np.float32)
+                if emb.ndim != 1:
                     continue
+                self.encodings.append(emb)
+                self.names.append(name)
 
-                self.encodings.append(encoding)
-                self.names.append(nombre)
-
-            except Exception as e:
-                print("Fila inválida:", e)
+            conn.close()
+        except Exception as e:
+            print("[UMAP] Error al cargar datos:", e)
 
         print("Personas cargadas:", len(self.encodings))
 

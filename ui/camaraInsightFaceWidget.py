@@ -29,7 +29,7 @@ def get_ctx_id():
 class CameraInsightFaceWidget(QWidget):
     personaConfirmada = Signal(str, int, float)
 
-    def __init__(self, parent=None, encodings_db=None, names_db=None, ids_db=None):
+    def __init__(self, parent=None, encodings_db=None, names_db=None, ids_db=None, detection_interval=3):
         super().__init__(parent)
 
         self.names_db = names_db or []
@@ -73,7 +73,7 @@ class CameraInsightFaceWidget(QWidget):
         self.confirmations = {}
         self.confirmed_set = set()
         self.frame_counter = 0
-        self.detection_interval = 3
+        self.detection_interval = detection_interval
         self.last_faces = []
         self.camera_index = 0
 
@@ -101,13 +101,13 @@ class CameraInsightFaceWidget(QWidget):
         camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
         self.camera_index = camara_seleccionada["index"]
 
-        self.cap = cv2.VideoCapture(self.camera_index)
+        self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
         if not self.cap.isOpened():
             self.cam_label.setText("No se pudo abrir la cámara")
             return
 
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
         self.btn_open.hide()
         self.btn_close.show()
@@ -198,10 +198,11 @@ class CameraInsightFaceWidget(QWidget):
         h, w, ch = rgb.shape
         qt_image = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(qt_image)
+        # Scale using label's size (no smooth transformation = faster)
         scaled_pixmap = pixmap.scaled(
             self.cam_label.size(),
             Qt.KeepAspectRatio,
-            Qt.SmoothTransformation
+            Qt.FastTransformation
         )
         self.cam_label.setPixmap(scaled_pixmap)
 
