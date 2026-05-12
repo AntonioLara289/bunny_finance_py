@@ -7,29 +7,34 @@ from PySide6 import QtWidgets, QtCore
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from ui.camaraInsightFaceWidget import CameraInsightFaceWidget, DB_PATH
+from ui.app_settings import AppSettings
 from database.db_manager import DBManager
 import sqlite3
 import numpy as np
 import time
 from datetime import datetime
 from log import log
-30
+
 # Status
 asistencias_status = {1: "Asistió", 0: "No asistió"}
 
 class AsistenciaPantalla(QtWidgets.QWidget):
-    def __init__(self, session_name=None, auto_start_camera=False, session_id=None):
+    def __init__(self, session_name=None, auto_start_camera=True, session_id=None):
         super().__init__()
 
         self.setAccessibleName("AsistenciaPantalla")
 
-        # Configuracion
-        self.SIMILARITY_THRESHOLD = 60.0
-        self.REQUIRED_SECONDS = 2.0
+        self.settings = AppSettings()
+
+        # Configuracion desde preferencias
+        self.SIMILARITY_THRESHOLD = self.settings.similarity_threshold * 100  # convertir a porcentaje
+        self.REQUIRED_SECONDS = self.settings.required_seconds
 
         # Variables de rendimiento
-        self.UI_UPDATE_INTERVAL = 0.3  # segundos
+        self.UI_UPDATE_INTERVAL = self.settings.ui_update_interval
         self.TIMER_GRACE_PERIOD = 1.0  # segundos
+
+        self.settings.settings_changed.connect(self._on_settings_changed)
 
         # person_id -> start_time
         self.recognition_timers = {}
@@ -108,7 +113,7 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         main_layout.addWidget(cam_frame)
         if auto_start_camera:
             try:
-                self.camera_widget.start_camera()
+                self.camera_widget.start_camera(auto_select=True)
             except Exception as e:
                 print(f"[ERROR] No se pudo iniciar la cámara automáticamente: {e}")
 
@@ -165,6 +170,11 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         except Exception:
             pass
         main_layout.addWidget(export_btn, alignment=QtCore.Qt.AlignRight)
+
+    def _on_settings_changed(self, key):
+        self.SIMILARITY_THRESHOLD = self.settings.similarity_threshold * 100
+        self.REQUIRED_SECONDS = self.settings.required_seconds
+        self.UI_UPDATE_INTERVAL = self.settings.ui_update_interval
 
     # Logica de asistencia
     def actualizarAsistencia(self, name, id_, similarity):

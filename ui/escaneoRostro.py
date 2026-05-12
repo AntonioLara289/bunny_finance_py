@@ -16,20 +16,22 @@ from PySide6.QtCore import (
     Qt,
     QThread
 )
-import mediapipe as mp
 import face_recognition
 import cv2
-from cv2_enumerate_cameras import enumerate_cameras
 import json
 import numpy as np
 import math
+from PySide6.QtWidgets import (
+    QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QFileDialog, QSlider, QScrollArea, QMessageBox,
+    QDialog
+)
+from PySide6.QtCore import Qt, QThread
+import face_recognition
 from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
-# from ui.components.camaraWorker import CameraWorker, FaceRecognitionWorker
 from ui.workers.camaraWorker import CameraWorker
 from ui.workers.faceRecognitionWorker import FaceRecognitionWorkerRegistro
-from ui.dialogs.camarasDisponibles import CamarasDisponibles
-from ui.dialogs.camarasDisponiblesMultiple import CamarasDisponiblesMultiple
+from ui.app_settings import AppSettings
 
 class EscanerRostro(QtWidgets.QWidget):
     
@@ -121,17 +123,6 @@ class EscanerRostro(QtWidgets.QWidget):
         # self.timer_update = QTimer()
         # self.timer_update.timeout.connect(self.update)
         # self.timer_update.start(30)
-        
-        self.mp_face_detection = mp.solutions.face_detection
-        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.8)
-        # self.mp_face_mesh = mp.solutions.face_mesh
-        # self.face_mesh = self.mp_face_mesh.FaceMesh(
-        #     static_image_mode=False,
-        #     max_num_faces=1,
-        #     refine_landmarks=True,   # Más preciso para ojos y boca
-        #     min_detection_confidence=0.5,
-        #     min_tracking_confidence=0.5
-        # )
 
         # if not self.known_encodings:
         #     print("No se encontró rostro en la imagen conocida.")
@@ -243,36 +234,16 @@ class EscanerRostro(QtWidgets.QWidget):
         self.iniciarCamaraWorker()
 
     def iniciarCamaraWorker(self):
-        
-        camaras_disponibles = []
 
-        for camera_info in enumerate_cameras():
+        settings = AppSettings()
+        cam_index = settings.camera_index
+        res_str = settings.camera_resolution
+        w, h = int(res_str.split("x")[0]), int(res_str.split("x")[1])
 
-            camara = {"index": camera_info.index, "nombre": camera_info.name}
-            camaras_disponibles.append(camara)
+        self.cap = cv2.VideoCapture(cam_index)
 
-            print(f"Index: {camera_info.index}, Name: {camera_info.name}")
-
-        camaras_disponibles = list({c['nombre']: c for c in camaras_disponibles}.values())
-
-        modal = CamarasDisponibles(camaras_disponibles=camaras_disponibles)
-        resultado = modal.exec()
-
-        if resultado == QDialog.Accepted:
-            print("Camara seleccionada Aceptada")
-            camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
-            # camaras_seleccionadas = modal.getCurrentIndexCombox()
-            # print('camaras_seleccionadas: ', camaras_seleccionadas)
-        elif resultado == QDialog.Rejected:
-            print("Rechazado")
-            self.cerrarCamara()
-            return
-                                
-        self.cap = cv2.VideoCapture(camara_seleccionada["index"])
-
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
 
         self.cam_thread = QThread()
         self.face_thread = QThread()

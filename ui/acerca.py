@@ -6,12 +6,13 @@ class Acerca(QtWidgets.QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Acerca de")
-        self.resize(450, 400)
+        self.resize(500, 500)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
 
         # Title
-        title = QtWidgets.QLabel("Bunny Detect")
+        title = QtWidgets.QLabel("Bunny Finance / Bunny Detect")
         title.setAlignment(QtCore.Qt.AlignCenter)
         title.setStyleSheet("font-size: 22px; font-weight: bold;")
         layout.addWidget(title)
@@ -38,15 +39,28 @@ class Acerca(QtWidgets.QDialog):
             "Librerías utilizadas:\n\n"
             "• Python 3 – © Python Software Foundation (Licencia PSF)\n"
             "• PySide6 (Qt for Python) – © The Qt Company (LGPL v3)\n"
-            "• MediaPipe – © Google LLC (Licencia Apache 2.0)\n"
             "• OpenCV – © OpenCV Contributors (Licencia Apache 2.0)\n"
+            "• InsightFace – © InsightFace Contributors (Licencia MIT)\n"
+            "• ONNX Runtime – © Microsoft Corporation (Licencia MIT)\n"
+            "• ONNX – © ONNX Contributors (Licencia Apache 2.0)\n"
             "• NumPy – © NumPy Developers (Licencia BSD)\n"
             "• Matplotlib – © Matplotlib Developers (Licencia PSF / BSD)\n"
-            "• face_recognition – © Adam Geitgey (Licencia MIT)\n\n"
+            "• UMAP – © Leland McInnes et al. (Licencia BSD)\n"
+            "• scikit-learn – © INRIA / scikit-learn Developers (Licencia BSD)\n"
+            "• openpyxl – © Eric Gazoni / Charlie Clark (Licencia MIT)\n\n"
             "Aviso de privacidad:\n"
             "Esta aplicación procesa imágenes y datos faciales de forma local. "
             "No se transmiten ni almacenan datos biométricos sin el "
-            "consentimiento explícito del usuario."
+            "consentimiento explícito del usuario.\n\n"
+            "Marcas registradas:\n"
+            "• Qt es una marca registrada de The Qt Company Ltd.\n"
+            "• Python es una marca registrada de Python Software Foundation.\n"
+            "• Microsoft, Windows y DirectML son marcas registradas de "
+            "Microsoft Corporation.\n"
+            "• NVIDIA y CUDA son marcas registradas de NVIDIA Corporation.\n"
+            "• ONNX es una marca de la Linux Foundation.\n\n"
+            "Este software se distribuye con fines académicos como trabajo "
+            "de tesis. Consulte el archivo LICENSE para más información."
         )
 
         text.setWordWrap(True)

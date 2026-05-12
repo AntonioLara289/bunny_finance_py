@@ -8,6 +8,7 @@ import umap
 import numpy as np
 import matplotlib.cm as cm
 import math
+from ui.app_settings import AppSettings
 
 class UMAPViewer(QtWidgets.QWidget):
     def __init__(self):
@@ -76,6 +77,7 @@ class UMAPViewer(QtWidgets.QWidget):
         main_layout.addWidget(self.canvas, stretch=1)
 
         # Base de datos y datos para muestreo
+        self.settings = AppSettings()
         db_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.db_path = os.path.join(db_dir, "faces.db")
         self.encodings = []
@@ -141,8 +143,8 @@ class UMAPViewer(QtWidgets.QWidget):
         ax = self.figure.add_subplot(111)
 
         reducer = umap.UMAP(
-            n_neighbors=max(2, min(5, len(X) - 1)),
-            min_dist=0.1,
+            n_neighbors=max(2, min(self.settings.umap_n_neighbors, len(X) - 1)),
+            min_dist=self.settings.umap_min_dist,
             n_components=2,
             random_state=42
         )

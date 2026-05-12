@@ -1,14 +1,13 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 from ui.top_bar import TopBar
 from log import log
-from ui.dialogs.camarasDisponibles import CamarasDisponibles
+from ui.app_settings import AppSettings
 
 import os
 import cv2
 import numpy as np
 import sqlite3
 from insightface.app import FaceAnalysis
-from cv2_enumerate_cameras import enumerate_cameras
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "faces.db")
 
@@ -24,72 +23,42 @@ class FaceRecognitionView(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Reconocimiento Facial")
-        self.setMinimumSize(900, 700)
-        self.resize(1000, 750)
-        log.push("Vista reconocimiento", "Abierto")
+        self.setWindowTitle("InsightFace Demo")
+        self.resize(900, 700)
+        self.setMinimumSize(400, 300)
+
+        self.settings = AppSettings()
 
         main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(12)
 
-        self.top_bar = TopBar("Reconocimiento Facial")
+        self.top_bar = TopBar("Demo InsightFace")
         main_layout.addWidget(self.top_bar)
 
-        self.status_label = QtWidgets.QLabel("Cargando modelo...")
+        self.status_label = QtWidgets.QLabel("Iniciando...")
         self.status_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.status_label.setStyleSheet("""
-            QLabel {
-                font-size: 15px;
-                font-weight: 600;
-                padding: 10px 20px;
-                border-radius: 8px;
-                background-color: #1e1e2e;
-                color: #cdd6f4;
-            }
-        """)
         main_layout.addWidget(self.status_label)
 
-        self.video_container = QtWidgets.QFrame()
-        self.video_container.setStyleSheet("""
-            QFrame {
-                background-color: #11111b;
-                border: 2px solid #313244;
-                border-radius: 12px;
-            }
-        """)
-        video_layout = QtWidgets.QVBoxLayout(self.video_container)
-        video_layout.setContentsMargins(8, 8, 8, 8)
+        self.video_label = QtWidgets.QLabel()
+        self.video_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.video_label.setMinimumSize(320, 240)
+        self.video_label.setStyleSheet("background-color: #1e1e1e; border-radius: 8px;")
+        main_layout.addWidget(self.video_label, stretch=1)
 
-        self.image_label = QtWidgets.QLabel()
-        self.image_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_label.setMinimumSize(320, 240)
-        self.image_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.image_label.setStyleSheet("background-color: #000; border-radius: 8px;")
-        self.image_label.setScaledContents(False)
-        video_layout.addWidget(self.image_label, stretch=1)
-
-        main_layout.addWidget(self.video_container, stretch=1)
-
+        # Info panel
         self.info_frame = QtWidgets.QFrame()
         self.info_frame.setStyleSheet("""
             QFrame {
-                background-color: #1e1e2e;
+                background-color: #2a2a2a;
                 border-radius: 8px;
                 padding: 8px;
             }
         """)
-        info_layout = QtWidgets.QHBoxLayout(self.info_frame)
-
-        self.match_label = QtWidgets.QLabel("Sin coincidencias")
+        info_layout = QtWidgets.QVBoxLayout(self.info_frame)
+        self.match_label = QtWidgets.QLabel("Esperando detección...")
         self.match_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.match_label.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                color: #a6adc8;
-                padding: 8px;
-            }
-        """)
+        self.match_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
         info_layout.addWidget(self.match_label)
 
         main_layout.addWidget(self.info_frame)
@@ -104,31 +73,20 @@ class FaceRecognitionView(QtWidgets.QWidget):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_frame)
 
-        self.select_camera()
+        self._init_camera_from_settings()
 
-    def select_camera(self):
-        camaras_disponibles = []
-        for camera_info in enumerate_cameras():
-            camara = {"index": camera_info.index, "nombre": camera_info.name}
-            camaras_disponibles.append(camara)
-            print(f"Index: {camera_info.index}, Name: {camera_info.name}")
+    def _init_camera_from_settings(self):
+        cam_index = self.settings.camera_index
+        res_str = self.settings.camera_resolution
+        w, h = int(res_str.split("x")[0]), int(res_str.split("x")[1])
 
-        camaras_disponibles = list({c['nombre']: c for c in camaras_disponibles}.values())
-
-        modal = CamarasDisponibles(camaras_disponibles=camaras_disponibles)
-        resultado = modal.exec()
-
-        if resultado == QtWidgets.QDialog.Accepted:
-            camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
-            print(f"Camera selected: {camara_seleccionada['nombre']}")
-        else:
-            print("Camera selection cancelled")
-            self.status_label.setText("No se seleccionó cámara")
+        self.cap = cv2.VideoCapture(cam_index)
+        if not self.cap or not self.cap.isOpened():
+            self.status_label.setText(f"No se pudo abrir cámara [{cam_index}]")
             return
 
-        self.cap = cv2.VideoCapture(camara_seleccionada["index"])
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
         self.status_label.setText("Buscando rostro...")
         self.timer.start(30)
 
@@ -239,11 +197,11 @@ class FaceRecognitionView(QtWidgets.QWidget):
         qt_img = QtGui.QImage(rgb.data, w, h, ch * w, QtGui.QImage.Format_RGB888)
         pixmap = QtGui.QPixmap.fromImage(qt_img)
         scaled_pixmap = pixmap.scaled(
-            self.image_label.size(),
+            self.video_label.size(),
             QtCore.Qt.KeepAspectRatio,
             QtCore.Qt.SmoothTransformation
         )
-        self.image_label.setPixmap(scaled_pixmap)
+        self.video_label.setPixmap(scaled_pixmap)
 
     def closeEvent(self, event):
         if self.cap:

@@ -4,7 +4,6 @@ import cv2
 import time
 import numpy as np
 import face_recognition
-import mediapipe as mp
 import os
 
 class FaceRecognitionWorker(QObject):

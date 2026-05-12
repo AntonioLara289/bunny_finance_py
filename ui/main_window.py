@@ -7,7 +7,7 @@ from datetime import datetime
 
 from ui.consultas import Consultas
 from ui.asistencia import AsistenciaPantalla
-from ui.camera import CameraWidget
+
 from ui.calculo import Calculo
 from ui.visualizacionEncodings import UMAPViewer
 from ui.escaneoRostro import EscanerRostro
@@ -246,9 +246,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pantallaMostrandose = nueva_clase_widget()
         self.animate_switch(self.pantallaMostrandose)
 
-    def mostrarVistaPreferencias(self) -> None:
-        print("Mostrando la vista de Preferencias")
-        self._cambiar_vista(Preferencias)
+    def mostrarVistaPreferencias(self) -> None:
+
+        print("Mostrando la vista de Preferencias")
+
+        self._cambiar_vista(
+            lambda: Preferencias(style_callback=self._cambiar_estilo)
+        )
 
     def mostrarVistaEscaneo(self) -> None:
         print("Mostrando la vista de escaneo")
@@ -381,8 +385,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.destroyActual()
         QtWidgets.QApplication.quit()
 
-    def mostrar_camara(self) -> None:
-        self.cam_window = CameraWidget(self)
+    def mostrar_camara(self) -> None:
+        pass
         modal = QtWidgets.QDialog(self)
         modal.setWindowTitle("Modal Dialog")
         modal_layout = QtWidgets.QVBoxLayout(modal)

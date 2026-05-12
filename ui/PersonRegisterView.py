@@ -1,14 +1,13 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 from ui.top_bar import TopBar
 from log import log
-from ui.dialogs.camarasDisponibles import CamarasDisponibles
+from ui.app_settings import AppSettings
 
 import os
 import cv2
 import sqlite3
 import numpy as np
 from insightface.app import FaceAnalysis
-from cv2_enumerate_cameras import enumerate_cameras
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "faces.db")
 
@@ -184,31 +183,21 @@ class PersonRegisterView(QtWidgets.QWidget):
         self.current_embeddings = []
         self.current_frame = None
 
-        self.select_camera()
+        self.settings = AppSettings()
+        self._init_camera_from_settings()
 
-    def select_camera(self):
-        camaras_disponibles = []
-        for camera_info in enumerate_cameras():
-            camara = {"index": camera_info.index, "nombre": camera_info.name}
-            camaras_disponibles.append(camara)
-            print(f"Index: {camera_info.index}, Name: {camera_info.name}")
+    def _init_camera_from_settings(self):
+        cam_index = self.settings.camera_index
+        res_str = self.settings.camera_resolution
+        w, h = int(res_str.split("x")[0]), int(res_str.split("x")[1])
 
-        camaras_disponibles = list({c['nombre']: c for c in camaras_disponibles}.values())
-
-        modal = CamarasDisponibles(camaras_disponibles=camaras_disponibles)
-        resultado = modal.exec()
-
-        if resultado == QtWidgets.QDialog.Accepted:
-            camara_seleccionada = camaras_disponibles[modal.getCurrentIndexCombox()]
-            print(f"Camera selected: {camara_seleccionada['nombre']}")
-        else:
-            print("Camera selection cancelled")
-            self.status.setText("No se seleccionó cámara")
+        self.cap = cv2.VideoCapture(cam_index)
+        if not self.cap or not self.cap.isOpened():
+            self.status.setText(f"No se pudo abrir cámara [{cam_index}]")
             return
 
-        self.cap = cv2.VideoCapture(camara_seleccionada["index"])
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
         self.timer.start(30)
 
     def create_tables(self):
