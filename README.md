@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🐰 Bunny Finance
+# Bunny Finance
 
 **Sistema de Reconocimiento Facial para Control de Asistencia Financiera**
 
@@ -20,43 +20,43 @@
 
 ---
 
-## ✨ Caracteristicas
+## Caracteristicas
 
-### 🧠 Reconocimiento Facial con IA
+### Reconocimiento Facial con IA
 - **InsightFace** con modelo `buffalo_l` para deteccion y reconocimiento de rostros en tiempo real
 - Soporte para aceleracion **CUDA** (NVIDIA), **DirectML** (AMD/Intel) y fallback a CPU
 - Matching por **distancia coseno** con umbral configurable
 - Confirmaciones multiples para evitar falsos positivos
 
-### 📸 Captura y Registro
+### Captura y Registro
 - Camara de 3 posiciones: perfil izquierdo, frente, perfil derecho
 - Almacenamiento de **encodings** en base de datos SQLite como vectores BLOB
 - Vista previa en vivo con bounding boxes y tracking
 
-### 📊 Proyeccion UMAP
+### Proyeccion UMAP
 - Visualizacion 2D de todos los encodings faciales registrados
 - Colores unicos por persona con hover para identificar nombres
 - Actualizacion en tiempo real al registrar nuevos rostros
 
-### 📋 Gestion de Asistencia
+### Gestion de Asistencia
 - Registro automatico de entrada/salida por reconocimiento facial
 - Tabla de asistencias con agrupacion por nombre (sin duplicados)
 - Sesiones configurables con horarios personalizados
 
-### 🎨 Interfaz Moderna
+### Interfaz Moderna
 - **Top bar** animada con degradados y efectos glassmorphism
 - Menu lateral colapsable con iconos
 - Multiples temas de estilo seleccionables desde Preferencias
 - Ventanas responsivas que se adaptan al tamano de pantalla
 
-### 📈 Modulo Financiero
+### Modulo Financiero
 - Calculos financieros integrados
 - Consultas y reportes
 - Historial de operaciones
 
 ---
 
-## 🏗️ Arquitectura del Proyecto
+## Arquitectura del Proyecto
 
 ```
 bunny_finance_py/
@@ -90,7 +90,7 @@ bunny_finance_py/
 
 ---
 
-## 🚀 Instalacion
+## Instalacion
 
 ### Prerequisitos
 - **Python 3.11**
@@ -121,7 +121,7 @@ python main.py
 
 ---
 
-## ⚙️ Stack Tecnologico
+## Stack Tecnologico
 
 | Tecnologia | Proposito |
 |-----------|-----------|
@@ -138,7 +138,7 @@ python main.py
 
 ---
 
-## 🎯 Roadmap
+## Roadmap
 
 - [x] Reconocimiento facial con InsightFace
 - [x] Captura de rostros en 3 posiciones
@@ -151,7 +151,7 @@ python main.py
 
 ---
 
-## 📄 Licencia
+## Licencia
 
 Este proyecto se desarrolla con fines academicos como trabajo de tesis.
 
