@@ -16,8 +16,6 @@
   <b>gestion de sesiones</b> y <b>control de asistencia</b> en una interfaz elegante y responsive.
 </p>
 
-![Demo](me.jpg)
-
 </div>
 
 ---
