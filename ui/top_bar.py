@@ -1,24 +1,28 @@
-from PySide6.QtWidgets import QWidget, QLabel, QHBoxLayout
-from PySide6.QtCore import Qt, QTimer, QTime
+from PySide6.QtCore import Qt, QTime, QTimer
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
+
 
 class TopBar(QWidget):
-    def __init__(self, left_text="example text", parent=None):
+    def __init__(self, left_text="", parent=None):
         super().__init__(parent)
 
+        self.setObjectName("TopBar")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setFixedHeight(38)
+
         self.lbl_left = QLabel(left_text)
-        self.lbl_left.setStyleSheet("font-size: 14px;")
+        self.lbl_left.setObjectName("TopBarTitle")
 
         self.lbl_hora = QLabel()
-        self.lbl_hora.setAlignment(Qt.AlignRight)
-        self.lbl_hora.setStyleSheet("font-size: 14px; color: gray;")
+        self.lbl_hora.setObjectName("TopBarClock")
+        self.lbl_hora.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setContentsMargins(2, 0, 2, 6)
         layout.addWidget(self.lbl_left)
-        layout.addStretch()
+        layout.addStretch(1)
         layout.addWidget(self.lbl_hora)
 
-        # Timer para actualizar la hora
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._actualizar_hora)
         self.timer.start(1000)

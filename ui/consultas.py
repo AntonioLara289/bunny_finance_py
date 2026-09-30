@@ -21,8 +21,15 @@ class Consultas(QtWidgets.QWidget):
         title = QLabel("Consultas de Personas")
         title.setObjectName("TitleLabel")
         title.setAlignment(QtCore.Qt.AlignCenter)
-        title.setStyleSheet("font-size:18px; font-weight:600;")
         main_layout.addWidget(title)
+
+        summary = QLabel(
+            "Busca por nombre y cambia el estatus de cada persona sin salir de la vista."
+        )
+        summary.setObjectName("Hint")
+        summary.setAlignment(QtCore.Qt.AlignCenter)
+        summary.setWordWrap(True)
+        main_layout.addWidget(summary)
 
         # ===== Search section =====
         search_frame = QFrame()
@@ -63,35 +70,43 @@ class Consultas(QtWidgets.QWidget):
         self.dbManager = DBManager()
         self.getPersonas = self.dbManager.getPersonas()
 
+        # Columnas reales de la tabla `personas`
+        # 0 id_persona | 1 nombre_persona | 2 imagen | 3 enc_izq | 4 enc_frente
+        # 5 enc_der    | 6 estatus       | 7 created_at
+        COL_ID, COL_NOMBRE, COL_ESTATUS, COL_FECHA = 0, 1, 6, 7
+
         # Setup para la tabla
-        rows = self.dbManager.getRows()
+        rows = len(self.getPersonas)
         self.table = QTableWidget(rows, 5)
         self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Muestras", "Fecha de registro", "Estatus"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        header.setSectionResizeMode(COL_ID, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setObjectName("DataTable")
 
         #  Llenado de la tabla
+        status_map_reverse = {1: "activado", 0: "desactivado", 2: "pendiente"}
         for row_idx, persona in enumerate(self.getPersonas):
-            self.table.setItem(row_idx, 0, QTableWidgetItem(str(persona[0])))  # ID
-            self.table.setItem(row_idx, 1, QTableWidgetItem(str(persona[1])))  # Nombre
-            self.table.setItem(row_idx, 2, QTableWidgetItem("1"))              # Muestras
-            self.table.setItem(row_idx, 3, QTableWidgetItem(str(persona[5])))  # Fecha de registro
+            self.table.setItem(row_idx, COL_ID, QTableWidgetItem(str(persona[COL_ID])))
+            self.table.setItem(row_idx, COL_NOMBRE, QTableWidgetItem(str(persona[COL_NOMBRE])))
+            self.table.setItem(row_idx, 2, QTableWidgetItem("1"))
+            self.table.setItem(row_idx, 3, QTableWidgetItem(str(persona[COL_FECHA])))
 
             status_combo = QComboBox()
             status_combo.addItems(["activado", "desactivado", "pendiente"])
-            status_map_reverse = {1: "activado", 0: "desactivado", 2: "pendiente"}
-            status_combo.setCurrentText(status_map_reverse.get(persona[4], "desactivado"))
-
-            status_combo.currentTextChanged.connect(lambda text, pid=persona[0]: self.update_status(pid, text))
+            status_combo.setCurrentText(status_map_reverse.get(persona[COL_ESTATUS], "desactivado"))
+            status_combo.currentTextChanged.connect(
+                lambda text, pid=persona[COL_ID]: self.update_status(pid, text)
+            )
             self.table.setCellWidget(row_idx, 4, status_combo)
 
-        self.table.setSortingEnabled(True)
-
         table_layout.addWidget(self.table)
-        main_layout.addWidget(table_frame)
+        main_layout.addWidget(table_frame, stretch=1)
 
         # Conectar busqueda
         self.search_box.textChanged.connect(self.filter_table)

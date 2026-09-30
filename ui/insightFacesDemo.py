@@ -1,7 +1,7 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 from ui.top_bar import TopBar
 from log import log
-from ui.app_settings import AppSettings
+from ui.app_settings import AppSettings, set_banner_state
 
 import os
 import cv2
@@ -37,28 +37,25 @@ class FaceRecognitionView(QtWidgets.QWidget):
         main_layout.addWidget(self.top_bar)
 
         self.status_label = QtWidgets.QLabel("Iniciando...")
+        self.status_label.setObjectName("StatusBanner")
+        self.status_label.setProperty("state", "info")
         self.status_label.setAlignment(QtCore.Qt.AlignCenter)
         main_layout.addWidget(self.status_label)
 
         self.video_label = QtWidgets.QLabel()
+        self.video_label.setObjectName("VideoFrame")
         self.video_label.setAlignment(QtCore.Qt.AlignCenter)
         self.video_label.setMinimumSize(320, 240)
-        self.video_label.setStyleSheet("background-color: #1e1e1e; border-radius: 8px;")
         main_layout.addWidget(self.video_label, stretch=1)
 
-        # Info panel
+        # Panel de coincidencia
         self.info_frame = QtWidgets.QFrame()
-        self.info_frame.setStyleSheet("""
-            QFrame {
-                background-color: #2a2a2a;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
+        self.info_frame.setObjectName("Card")
         info_layout = QtWidgets.QVBoxLayout(self.info_frame)
+        info_layout.setContentsMargins(14, 12, 14, 12)
         self.match_label = QtWidgets.QLabel("Esperando detección...")
+        self.match_label.setObjectName("SectionTitle")
         self.match_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.match_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
         info_layout.addWidget(self.match_label)
 
         main_layout.addWidget(self.info_frame)
@@ -73,6 +70,9 @@ class FaceRecognitionView(QtWidgets.QWidget):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_frame)
 
+        self.threshold = self.settings.similarity_threshold
+        self._best_sim = -1.0
+
         self._init_camera_from_settings()
 
     def _init_camera_from_settings(self):
@@ -82,12 +82,12 @@ class FaceRecognitionView(QtWidgets.QWidget):
 
         self.cap = cv2.VideoCapture(cam_index)
         if not self.cap or not self.cap.isOpened():
-            self.status_label.setText(f"No se pudo abrir cámara [{cam_index}]")
+            set_banner_state(self.status_label, "error", f"No se pudo abrir cámara [{cam_index}]")
             return
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
-        self.status_label.setText("Buscando rostro...")
+        set_banner_state(self.status_label, "info", "Buscando rostro...")
         self.timer.start(30)
 
     def load_database(self):
@@ -132,12 +132,14 @@ class FaceRecognitionView(QtWidgets.QWidget):
         faces = self.app.get(frame)
 
         recognized_any = False
+        best_label = ""
+        self._best_sim = -1.0
 
         for face in faces:
             name, sim = self.find_match(face.embedding)
             box = face.bbox.astype(int)
 
-            if sim > 0.5:
+            if sim > self.threshold:
                 recognized_any = True
                 color = (0, 255, 0)
                 label = f"{name} ({sim:.2f})"
@@ -145,52 +147,21 @@ class FaceRecognitionView(QtWidgets.QWidget):
                 color = (0, 0, 255)
                 label = f"Unknown ({sim:.2f})"
 
+            if sim > self._best_sim:
+                self._best_sim = sim
+                best_label = label
+
             cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, 2)
             cv2.rectangle(frame, (box[0], box[1] - 25), (box[0] + 200, box[1]), color, cv2.FILLED)
             cv2.putText(frame, label, (box[0] + 6, box[1] - 8),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
         if recognized_any:
-            self.status_label.setStyleSheet("""
-                QLabel {
-                    font-size: 15px;
-                    font-weight: 600;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    background-color: #a6e3a1;
-                    color: #1e1e2e;
-                }
-            """)
-            self.status_label.setText("Rostro reconocido")
-            self.match_label.setText(f"Match: {label}")
-            self.match_label.setStyleSheet("""
-                QLabel {
-                    font-size: 14px;
-                    color: #a6e3a1;
-                    padding: 8px;
-                    font-weight: 600;
-                }
-            """)
+            set_banner_state(self.status_label, "success", "Rostro reconocido")
+            self.match_label.setText(f"Coincidencia: {best_label}")
         else:
-            self.status_label.setStyleSheet("""
-                QLabel {
-                    font-size: 15px;
-                    font-weight: 600;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    background-color: #1e1e2e;
-                    color: #cdd6f4;
-                }
-            """)
-            self.status_label.setText("Buscando rostro...")
+            set_banner_state(self.status_label, "info", "Buscando rostro...")
             self.match_label.setText("Sin coincidencias")
-            self.match_label.setStyleSheet("""
-                QLabel {
-                    font-size: 14px;
-                    color: #a6adc8;
-                    padding: 8px;
-                }
-            """)
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb.shape

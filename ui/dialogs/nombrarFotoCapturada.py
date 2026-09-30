@@ -171,11 +171,11 @@ class NombrarFotoCapturada(QDialog):
             json_der = json.dumps(encoding_der.tolist())
 
             self.dbManager.guardarPersonaData(
-                self.nombre_imagen.text(), 
+                self.nombre_imagen.text(),
                 self.nombre_imagen.text() + '.png',
                 json_frente,
-                json_izq,
-                json_der)
+                json_der,
+                json_izq)
 
             output_path = os.path.join(self.directorio_customizado, self.nombre_imagen.text() + '.png')
 

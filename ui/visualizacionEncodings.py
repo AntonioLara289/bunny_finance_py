@@ -1,5 +1,3 @@
-import os
-import sqlite3
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QCheckBox, QPushButton, QHBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -8,7 +6,7 @@ import umap
 import numpy as np
 import matplotlib.cm as cm
 import math
-from ui.app_settings import AppSettings
+from ui.app_settings import AppSettings, is_light_theme
 
 class UMAPViewer(QtWidgets.QWidget):
     def __init__(self):
@@ -27,12 +25,13 @@ class UMAPViewer(QtWidgets.QWidget):
 
         # Header with title + refresh
         title = QLabel("Visualización UMAP de Personas")
+        title.setObjectName("PageTitle")
         title.setAlignment(QtCore.Qt.AlignLeft)
-        title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         refresh_btn = QPushButton("⟳")
+        refresh_btn.setProperty("variant", "ghost")
         refresh_btn.setToolTip("Recalcular la proyección UMAP")
-        refresh_btn.setFixedSize(28, 28)
+        refresh_btn.setFixedSize(30, 30)
         refresh_btn.setAccessibleName("RefreshUMAP")
         refresh_btn.clicked.connect(self._on_refresh)
 
@@ -57,6 +56,7 @@ class UMAPViewer(QtWidgets.QWidget):
             "posibles confusiones en el reconocimiento facial y evaluar la calidad de "
             "los encodings generados por el sistema."
         )
+        text.setObjectName("Hint")
         text.setWordWrap(True)
         text.setMaximumHeight(120)
         main_layout.addWidget(text)
@@ -67,19 +67,13 @@ class UMAPViewer(QtWidgets.QWidget):
         main_layout.addWidget(self.hover_checkbox)
 
         # Canvas de Matplotlib
+        self.settings = AppSettings()
         self.figure = Figure()
-        # ensure white background for better contrast with QSS
-        try:
-            self.figure.patch.set_facecolor('white')
-        except Exception:
-            pass
+        self._apply_chart_theme()
         self.canvas = FigureCanvas(self.figure)
         main_layout.addWidget(self.canvas, stretch=1)
 
-        # Base de datos y datos para muestreo
-        self.settings = AppSettings()
-        db_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.db_path = os.path.join(db_dir, "faces.db")
+        # Datos para la proyeccion
         self.encodings = []
         self.names = []
         self.embedding = None
@@ -88,9 +82,29 @@ class UMAPViewer(QtWidgets.QWidget):
         self._umap_drawn = False
         self.cargar_personas()
 
+    def _chart_colors(self):
+        """Colores del lienzo segun el tema activo."""
+        if is_light_theme(self.settings.theme_path):
+            return "#ffffff", "#1f2a33", "#c7d3dd", "#4a5b68"
+        return "#101c24", "#d9f2fb", "#2b4b5c", "#9db8ca"
+
+    def _apply_chart_theme(self):
+        """Matplotlib no lee el QSS, asi que se=configura con la paleta del tema."""
+        bg, text, grid, muted = self._chart_colors()
+        try:
+            self.figure.patch.set_facecolor(bg)
+            self.figure.set_edgecolor(bg)
+        except Exception:
+            pass
+        self._chart_bg = bg
+        self._chart_text = text
+        self._chart_grid = grid
+        self._chart_muted = muted
+
     def _on_refresh(self):
         """Refresh UMAP data and redraw."""
         try:
+            self._apply_chart_theme()
             self.cargar_personas()
             self.plot_umap()
         except Exception as e:
@@ -109,23 +123,12 @@ class UMAPViewer(QtWidgets.QWidget):
         self.names.clear()
 
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
+            # Misma base de datos que el resto de la aplicacion.
+            from database.db_manager import DBManager
 
-            cursor.execute("""
-                SELECT persons.name, encodings.embedding
-                FROM encodings
-                JOIN persons ON persons.id = encodings.person_id
-            """)
-
-            for name, blob in cursor.fetchall():
-                emb = np.frombuffer(blob, dtype=np.float32)
-                if emb.ndim != 1:
-                    continue
+            for nombre, emb in DBManager().getPersonasConEmbeddings():
                 self.encodings.append(emb)
-                self.names.append(name)
-
-            conn.close()
+                self.names.append(nombre)
         except Exception as e:
             print("[UMAP] Error al cargar datos:", e)
 
@@ -140,7 +143,9 @@ class UMAPViewer(QtWidgets.QWidget):
         X = np.vstack(self.encodings)
 
         self.figure.clear()
+        self._apply_chart_theme()
         ax = self.figure.add_subplot(111)
+        ax.set_facecolor(self._chart_bg)
 
         reducer = umap.UMAP(
             n_neighbors=max(2, min(self.settings.umap_n_neighbors, len(X) - 1)),
@@ -162,9 +167,13 @@ class UMAPViewer(QtWidgets.QWidget):
             picker=True
         )
 
-        ax.set_title("Proyección UMAP de Personas")
-        ax.set_xlabel("UMAP-1")
-        ax.set_ylabel("UMAP-2")
+        ax.set_title("Proyección UMAP de Personas", color=self._chart_text)
+        ax.set_xlabel("UMAP-1", color=self._chart_muted)
+        ax.set_ylabel("UMAP-2", color=self._chart_muted)
+        ax.tick_params(colors=self._chart_muted)
+        for spine in ax.spines.values():
+            spine.set_color(self._chart_grid)
+        ax.grid(True, color=self._chart_grid, linewidth=0.6, alpha=0.6)
 
         # Anotaciones con nombres
         self.annotation = ax.annotate(
@@ -172,8 +181,8 @@ class UMAPViewer(QtWidgets.QWidget):
             xy=(0, 0),
             xytext=(10, 10),
             textcoords="offset points",
-            bbox=dict(boxstyle="round", fc="black", alpha=0.75),
-            color="white"
+            bbox=dict(boxstyle="round", fc=self._chart_bg, ec=self._chart_grid, alpha=0.92),
+            color=self._chart_text
         )
         self.annotation.set_visible(False)
 
@@ -219,7 +228,9 @@ class UMAPViewer(QtWidgets.QWidget):
     # Pantalla de error
     def _draw_error(self, msg):
         self.figure.clear()
+        self._apply_chart_theme()
         ax = self.figure.add_subplot(111)
-        ax.text(0.5, 0.5, msg, ha="center", va="center", fontsize=14)
+        ax.set_facecolor(self._chart_bg)
+        ax.text(0.5, 0.5, msg, ha="center", va="center", fontsize=14, color=self._chart_text)
         ax.axis("off")
         self.canvas.draw()

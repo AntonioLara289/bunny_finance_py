@@ -1,49 +1,74 @@
 # main.py
-import sys
 import os
-from PySide6.QtWidgets import QApplication
+import sys
+
 from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication
+
+from ui.app_settings import AppSettings, DEFAULT_THEME
 from ui.main_window import MainWindow
 
-# Carga un archivo .qss y aplicar el estilo
-def load_stylesheet(app: QApplication, filename: str) -> None:
-    import traceback
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def resolve_theme_path(theme_path: str) -> str:
+    """Convierte la ruta relativa de un tema en una ruta absoluta y existente.
+
+    Evita depender del directorio de trabajo actual y cae al tema por defecto
+    si el archivo guardado ya no esta en disco.
+    """
+    if not theme_path:
+        return os.path.join(BASE_DIR, DEFAULT_THEME)
+
+    candidate = theme_path if os.path.isabs(theme_path) else os.path.join(BASE_DIR, theme_path)
+    if os.path.isfile(candidate):
+        return candidate
+
+    return os.path.join(BASE_DIR, DEFAULT_THEME)
+
+
+def load_stylesheet(app: QApplication, theme_path: str) -> bool:
+    """Aplica la hoja de estilos del tema indicado. Devuelve True si se aplico."""
+    full_path = resolve_theme_path(theme_path)
+
+    if not os.path.isfile(full_path):
+        print(f"[STYLE] No se encontro la hoja de estilo: {full_path}")
+        return False
 
     try:
-        # Mostrar la ruta absoluta para revisar que la ruta sea correcto
-        full_path = os.path.abspath(filename)
-        print(f"[STYLE] Cargando stylesheet: {filename} -> {full_path}")
+        with open(full_path, "r", encoding="utf-8") as fh:
+            qss = fh.read().strip()
+    except OSError as exc:
+        print(f"[STYLE] No se pudo leer la hoja de estilo: {exc}")
+        return False
 
-        if not os.path.exists(full_path):
-            print(f"[WARN] No se encontró la hoja de estilo: {full_path}")
-            return
+    if not qss:
+        print(f"[STYLE] La hoja de estilo esta vacia: {full_path}")
+        return False
 
-        with open(full_path, "r", encoding="utf-8") as f:
-            qss = f.read()
-
-        if not qss.strip():
-            print(f"[WARN] La hoja de estilo está vacía: {full_path}")
-            return
-
-        app.setStyleSheet(qss)
-        print(f"[STYLE] Stylesheet aplicado correctamente: {full_path}")
-
-    except Exception as e:
-        print("[ERROR] Falló al cargar stylesheet:", e)
-        traceback.print_exc()
+    app.setStyleSheet(qss)
+    return True
 
 
 def main() -> int:
     app = QApplication(sys.argv)
+    app.setApplicationName("Bunny Finance")
+    app.setApplicationDisplayName("Bunny Finance")
+    app.setOrganizationName("BunnyFinance")
 
-    # Estilo inicial
-    load_stylesheet(app, "styles/aerofrost.qss")
+    settings = AppSettings()
+    if not load_stylesheet(app, settings.theme_path):
+        load_stylesheet(app, DEFAULT_THEME)
 
     def apply_style(path: str) -> None:
         load_stylesheet(app, path)
 
     window = MainWindow(load_stylesheet_callback=apply_style)
-    window.setWindowIcon(QIcon("icon.png"))
+
+    icon_path = os.path.join(BASE_DIR, "icon.png")
+    if os.path.isfile(icon_path):
+        window.setWindowIcon(QIcon(icon_path))
+
     window.showMaximized()
 
     return app.exec()

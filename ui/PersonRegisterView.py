@@ -1,7 +1,7 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 from ui.top_bar import TopBar
 from log import log
-from ui.app_settings import AppSettings
+from ui.app_settings import AppSettings, set_banner_state
 
 import os
 import cv2
@@ -35,76 +35,48 @@ class PersonRegisterView(QtWidgets.QWidget):
         self.top_bar = TopBar("Registrar Persona")
         main_layout.addWidget(self.top_bar)
 
+        subtitle = QtWidgets.QLabel(
+            "Captura varias muestras del rostro para mejorar la precisión del reconocimiento."
+        )
+        subtitle.setObjectName("Hint")
+        subtitle.setWordWrap(True)
+        main_layout.addWidget(subtitle)
+
         input_frame = QtWidgets.QFrame()
-        input_frame.setStyleSheet("""
-            QFrame {
-                background-color: #1e1e2e;
-                border-radius: 8px;
-                padding: 12px;
-            }
-        """)
+        input_frame.setObjectName("Card")
         input_layout = QtWidgets.QVBoxLayout(input_frame)
+        input_layout.setContentsMargins(14, 12, 14, 12)
         input_layout.setSpacing(8)
 
         name_label = QtWidgets.QLabel("Nombre de la persona")
-        name_label.setStyleSheet("""
-            QLabel {
-                font-size: 13px;
-                font-weight: 600;
-                color: #cdd6f4;
-            }
-        """)
+        name_label.setObjectName("SectionTitle")
         input_layout.addWidget(name_label)
 
         self.name_input = QtWidgets.QLineEdit()
         self.name_input.setPlaceholderText("Escribe el nombre completo...")
-        self.name_input.setStyleSheet("""
-            QLineEdit {
-                padding: 10px 14px;
-                border-radius: 6px;
-                border: 1px solid #45475a;
-                background-color: #313244;
-                color: #cdd6f4;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #89b4fa;
-            }
-        """)
+        self.name_input.setMinimumHeight(34)
         input_layout.addWidget(self.name_input)
 
         main_layout.addWidget(input_frame)
 
         self.video_container = QtWidgets.QFrame()
-        self.video_container.setStyleSheet("""
-            QFrame {
-                background-color: #11111b;
-                border: 2px solid #313244;
-                border-radius: 12px;
-            }
-        """)
+        self.video_container.setObjectName("Card")
         video_layout = QtWidgets.QVBoxLayout(self.video_container)
         video_layout.setContentsMargins(8, 8, 8, 8)
 
         self.image_label = QtWidgets.QLabel()
+        self.image_label.setObjectName("VideoFrame")
         self.image_label.setAlignment(QtCore.Qt.AlignCenter)
         self.image_label.setMinimumSize(320, 240)
         self.image_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.image_label.setStyleSheet("background-color: #000; border-radius: 8px;")
         self.image_label.setScaledContents(False)
         video_layout.addWidget(self.image_label, stretch=1)
 
         main_layout.addWidget(self.video_container, stretch=1)
 
         self.capture_count_label = QtWidgets.QLabel("Capturas: 0")
+        self.capture_count_label.setObjectName("Muted")
         self.capture_count_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.capture_count_label.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                color: #a6adc8;
-                padding: 6px;
-            }
-        """)
         main_layout.addWidget(self.capture_count_label)
 
         btn_layout = QtWidgets.QHBoxLayout()
@@ -112,62 +84,24 @@ class PersonRegisterView(QtWidgets.QWidget):
 
         self.capture_btn = QtWidgets.QPushButton("Capturar rostro")
         self.capture_btn.setMinimumHeight(44)
-        self.capture_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #89b4fa;
-                color: #1e1e2e;
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 600;
-                padding: 10px 20px;
-            }
-            QPushButton:hover {
-                background-color: #74c7ec;
-            }
-            QPushButton:pressed {
-                background-color: #89dceb;
-            }
-        """)
+        self.capture_btn.setToolTip("Toma una muestra del rostro que aparece en la cámara")
         self.capture_btn.clicked.connect(self.capture_face)
         btn_layout.addWidget(self.capture_btn)
 
         self.save_btn = QtWidgets.QPushButton("Guardar en base de datos")
+        self.save_btn.setProperty("variant", "success")
         self.save_btn.setMinimumHeight(44)
-        self.save_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #a6e3a1;
-                color: #1e1e2e;
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 600;
-                padding: 10px 20px;
-            }
-            QPushButton:hover {
-                background-color: #94e2d5;
-            }
-            QPushButton:pressed {
-                background-color: #89dceb;
-            }
-        """)
+        self.save_btn.setToolTip("Guarda las muestras capturadas con el nombre indicado")
+        self.save_btn.setEnabled(False)
         self.save_btn.clicked.connect(self.save_person)
         btn_layout.addWidget(self.save_btn)
 
         main_layout.addLayout(btn_layout)
 
         self.status = QtWidgets.QLabel("Listo para registrar")
+        self.status.setObjectName("StatusBanner")
         self.status.setAlignment(QtCore.Qt.AlignCenter)
-        self.status.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                font-weight: 600;
-                padding: 10px 20px;
-                border-radius: 8px;
-                background-color: #1e1e2e;
-                color: #cdd6f4;
-            }
-        """)
+        self.status.setProperty("state", "info")
         main_layout.addWidget(self.status)
 
         self.app = FaceAnalysis()
@@ -193,7 +127,7 @@ class PersonRegisterView(QtWidgets.QWidget):
 
         self.cap = cv2.VideoCapture(cam_index)
         if not self.cap or not self.cap.isOpened():
-            self.status.setText(f"No se pudo abrir cámara [{cam_index}]")
+            set_banner_state(self.status, "error", f"No se pudo abrir cámara [{cam_index}]")
             return
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
@@ -242,71 +176,36 @@ class PersonRegisterView(QtWidgets.QWidget):
 
     def capture_face(self):
         if self.current_frame is None:
-            self.status.setText("Esperando cámara...")
+            set_banner_state(self.status, "warning", "Esperando cámara...")
             return
 
         faces = self.app.get(self.current_frame)
 
         if len(faces) == 0:
-            self.status.setStyleSheet("""
-                QLabel {
-                    font-size: 14px;
-                    font-weight: 600;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    background-color: #f38ba8;
-                    color: #1e1e2e;
-                }
-            """)
-            self.status.setText("No se detectó rostro")
+            set_banner_state(self.status, "error", "No se detectó rostro")
             return
 
         emb = faces[0].embedding
         self.current_embeddings.append(emb)
 
         self.capture_count_label.setText(f"Capturas: {len(self.current_embeddings)}")
+        self.save_btn.setEnabled(True)
 
-        self.status.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                font-weight: 600;
-                padding: 10px 20px;
-                border-radius: 8px;
-                background-color: #a6e3a1;
-                color: #1e1e2e;
-            }
-        """)
-        self.status.setText(f"Rostro capturado ({len(self.current_embeddings)})")
+        set_banner_state(
+            self.status,
+            "success",
+            f"Rostro capturado ({len(self.current_embeddings)})",
+        )
 
     def save_person(self):
         name = self.name_input.text().strip()
 
         if not name:
-            self.status.setStyleSheet("""
-                QLabel {
-                    font-size: 14px;
-                    font-weight: 600;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    background-color: #fab387;
-                    color: #1e1e2e;
-                }
-            """)
-            self.status.setText("Ingresa un nombre")
+            set_banner_state(self.status, "warning", "Ingresa un nombre")
             return
 
         if len(self.current_embeddings) == 0:
-            self.status.setStyleSheet("""
-                QLabel {
-                    font-size: 14px;
-                    font-weight: 600;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    background-color: #fab387;
-                    color: #1e1e2e;
-                }
-            """)
-            self.status.setText("Captura al menos un rostro")
+            set_banner_state(self.status, "warning", "Captura al menos un rostro")
             return
 
         cursor = self.conn.cursor()
@@ -327,18 +226,9 @@ class PersonRegisterView(QtWidgets.QWidget):
         self.current_embeddings = []
         self.name_input.clear()
         self.capture_count_label.setText("Capturas: 0")
+        self.save_btn.setEnabled(False)
 
-        self.status.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                font-weight: 600;
-                padding: 10px 20px;
-                border-radius: 8px;
-                background-color: #a6e3a1;
-                color: #1e1e2e;
-            }
-        """)
-        self.status.setText("Guardado correctamente")
+        set_banner_state(self.status, "success", f"Guardado correctamente: {name}")
 
     def closeEvent(self, event):
         if self.cap:

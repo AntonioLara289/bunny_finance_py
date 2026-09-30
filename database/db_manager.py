@@ -36,18 +36,18 @@ class DBManager:
         #self.crearTablaHistorial()
         
     def getPersonasData(self):
-        
+        # La tabla se asegura con su propia conexión: crearla aquí reasignaba
+        # self.conn y dejaba self.cursor apuntando a una conexión ya cerrada.
+        self.crearTablaPersonas()
+
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        self.crearTablaPersonas()
-
-        # Ahora sí, seleccionamos datos
         self.cursor.execute("SELECT * FROM personas where estatus = 1")
 
         filas = self.cursor.fetchall()
 
-        self.conn.commit()
+        self.conn.close()
 
         return filas
         
@@ -97,18 +97,58 @@ class DBManager:
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        self.cursor.execute("SELECT encodes FROM personas")
+        self.cursor.execute(
+            "SELECT encoding_perfil_izquierdo, encoding_frente, encoding_perfil_derecho "
+            "FROM personas WHERE estatus = 1"
+        )
         rows = self.cursor.fetchall()
 
         self.conn.close()
 
-        # Build the list manually
+        # Devuelve un vector de 3 x N (izquierdo, frente, derecho) por persona
         filas = []
-        for row in rows:
-            # Convert string to actual list
-            encoding = ast.literal_eval(row[0])
-            filas.append(encoding)
+        for izquierda, frente, derecho in rows:
+            try:
+                filas.append(np.array([
+                    np.asarray(ast.literal_eval(izquierda), dtype=np.float64),
+                    np.asarray(ast.literal_eval(frente), dtype=np.float64),
+                    np.asarray(ast.literal_eval(derecho), dtype=np.float64),
+                ]))
+            except (ValueError, SyntaxError):
+                # Fila corrupta o preexistente con otro formato: se omite
+                continue
         return filas
+
+    def getPersonasConEmbeddings(self):
+        """Devuelve [(nombre, embedding_frente), ...] de las personas activas.
+
+        Es la fuente de datos que usa la vista UMAP. Se lee de la misma tabla
+        que el resto de la aplicacion ("personas" en bunny_detect_v2.db) para
+        que las personas recien registradas aparezcan en la visualizacion.
+
+        Se usa el encoding frontal porque es el que usa el reconocimiento.
+        """
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute(
+            "SELECT nombre_persona, encoding_frente FROM personas WHERE estatus = 1"
+        )
+        rows = self.cursor.fetchall()
+
+        self.conn.close()
+
+        resultado = []
+        for nombre, encoding_frente in rows:
+            try:
+                emb = np.asarray(ast.literal_eval(encoding_frente), dtype=np.float64)
+            except (ValueError, SyntaxError, TypeError):
+                # Fila corrupta: se omite para no desalinear nombre y embedding
+                continue
+            if emb.ndim == 1 and emb.size:
+                resultado.append((nombre, emb))
+
+        return resultado
 
     def crearTablaHistorial(self):
 
@@ -221,8 +261,12 @@ class DBManager:
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
-        data = {key_persona, datetime.now().isoformat()}
-        
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS historial_detecciones (id_deteccion INTEGER PRIMARY KEY AUTOINCREMENT, key_persona INTEGER NOT NULL, fecha TEXT NOT NULL)"
+        )
+
+        data = (key_persona, datetime.now().isoformat())
+
         self.cursor.execute("INSERT INTO historial_detecciones (key_persona, fecha) VALUES (?, ?)", data)
 
         self.conn.commit()
@@ -247,33 +291,29 @@ class DBManager:
         self.conn.close()
     
     def getBalances(self):
+        # Antes reutilizaba self.conn/self.cursor, que ya venían cerrados desde
+        # el último método ejecutado y provocaban "Cannot operate on a closed database".
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
 
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS balance_actual (id_balance INTEGER PRIMARY KEY AUTOINCREMENT, balance REAL, created_at TEXT)")
-        last_id_balance = self.cursor.execute("SELECT * FROM balance_actual;")
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS balance_actual ("
+            "id_balance INTEGER PRIMARY KEY AUTOINCREMENT, balance REAL, created_at TEXT)"
+        )
+        self.conn.commit()
+
+        self.cursor.execute("SELECT * FROM balance_actual;")
         filas = self.cursor.fetchall()
 
         self.conn.close()
-        
+
         # Si hay datos
         if filas:
-            # id_balance, balance, created_at = filas            
             return filas
-            # i = 1
-
-            # for fila in filas:
-            #     id_balance, balance, created_at = fila
-            #     print("ID:", id_balance)
-            #     print("Balance:", balance)
-            #     print("Fecha:", created_at)
-            #     print("ID:", id_balance)
-            #     print("Balance:", balance)
-            #     print("Fecha:", created_at)
-            #     print(fila)
-
-            #     i = i + 1
         else:
             print("No hay datos.")
             return []
+
         
     def dbConection(self):
         return sqlite3.connect(self.db_path)

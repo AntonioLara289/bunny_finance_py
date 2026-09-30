@@ -19,6 +19,7 @@ from PySide6.QtCore import (
 import face_recognition
 import cv2
 import json
+import os
 import numpy as np
 import math
 from PySide6.QtWidgets import (
@@ -31,7 +32,7 @@ from ui.dialogs.nombrarFotoCapturada import NombrarFotoCapturada
 from database.db_manager import DBManager
 from ui.workers.camaraWorker import CameraWorker
 from ui.workers.faceRecognitionWorker import FaceRecognitionWorkerRegistro
-from ui.app_settings import AppSettings
+from ui.app_settings import AppSettings, set_banner_state
 
 class EscanerRostro(QtWidgets.QWidget):
     
@@ -39,8 +40,23 @@ class EscanerRostro(QtWidgets.QWidget):
         super().__init__()
         
         self.directorio_guardar = "src/capturas_personas/"
+        os.makedirs(self.directorio_guardar, exist_ok=True)
+
         self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(QtWidgets.QLabel("Soy la pantalla de escaner"))
+        self.layout.setContentsMargins(20, 20, 20, 20)
+        self.layout.setSpacing(12)
+
+        titulo = QtWidgets.QLabel("Registro de rostro")
+        titulo.setObjectName("PageTitle")
+        self.layout.addWidget(titulo)
+
+        subtitulo = QtWidgets.QLabel(
+            "Toma tres fotos: perfil izquierdo, frente y perfil derecho. "
+            "El sistema construye un encoding por cada posición."
+        )
+        subtitulo.setObjectName("Hint")
+        subtitulo.setWordWrap(True)
+        self.layout.addWidget(subtitulo)
 
         # self.encoding_foto_capturada = None
         self.encodings_db = []
@@ -82,16 +98,13 @@ class EscanerRostro(QtWidgets.QWidget):
         self.scrollBarAreaFotos.setWidget(self.content_widget_scroll_bar)
 
         self.cam_live = QLabel(self)
+        self.cam_live.setObjectName("VideoFrame")
+        self.cam_live.setAlignment(Qt.AlignCenter)
+        self.cam_live.setMinimumSize(480, 360)
         self.label_estado_reconocimiento = QLabel("")
+        self.label_estado_reconocimiento.setObjectName("StatusBanner")
+        self.label_estado_reconocimiento.setProperty("state", "info")
         self.label_estado_reconocimiento.setAlignment(Qt.AlignCenter)
-        self.label_estado_reconocimiento.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 5px;
-            }
-        """)
         # self.label_foto_capturada = QLabel(self)
         # self.foto_de_camara = QLabel(self)
         # self.input_nombre_foto = QLineEdit()
@@ -199,15 +212,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_cerrar_camara.hide()
         self.cam_live.hide()
         self.boton_guardar_foto.hide()
-        self.label_estado_reconocimiento.setText("")
-        self.label_estado_reconocimiento.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 5px;
-            }
-        """)
+        set_banner_state(self.label_estado_reconocimiento, "info", "")
 
     def onDestroy(self, event):
         # Asegurarse de llamar a cerrarCamara para limpiar los hilos al cambiar de pantalla
@@ -228,7 +233,7 @@ class EscanerRostro(QtWidgets.QWidget):
         self.boton_guardar_foto.show()
         self.cam_live.show()
         self.boton_cerrar_camara.show()
-        self.label_estado_reconocimiento.setText("Escaneando rostro...")
+        set_banner_state(self.label_estado_reconocimiento, "info", "Escaneando rostro...")
 
         self.cargarDatosPersonas()
         self.iniciarCamaraWorker()
@@ -279,30 +284,14 @@ class EscanerRostro(QtWidgets.QWidget):
         self.cam_thread.start()
 
     def on_persona_identificada(self, nombre, persona_id, similitud):
-        self.label_estado_reconocimiento.setText(f"Ya registrado: {nombre} ({similitud:.1f}%)")
-        self.label_estado_reconocimiento.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 5px;
-                background-color: #d4edda;
-                color: #155724;
-            }
-        """)
+        set_banner_state(
+            self.label_estado_reconocimiento,
+            "success",
+            f"Ya registrado: {nombre} ({similitud:.1f}%)",
+        )
 
     def on_persona_nueva(self):
-        self.label_estado_reconocimiento.setText("Listo para registrar")
-        self.label_estado_reconocimiento.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 5px;
-                background-color: #fff3cd;
-                color: #856404;
-            }
-        """)
+        set_banner_state(self.label_estado_reconocimiento, "warning", "Listo para registrar")
         
     def liberar_todos_los_recursos(self):
         """Libera TODOS los recursos antes de cerrar"""

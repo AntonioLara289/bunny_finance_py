@@ -1,7 +1,57 @@
 from PySide6.QtCore import QSettings, Signal, QObject
+from PySide6.QtWidgets import QWidget
 
 APP = "BunnyFinance"
 ORG = "BunnyFinance"
+
+DEFAULT_THEME = "styles/style.qss"
+
+AVAILABLE_THEMES = (
+    ("Aero Light  ·  clara, azul cielo", "styles/style.qss"),
+    ("Aero Dark  ·  oscura, verde azulado", "styles/frutigerdark.qss"),
+    ("Aero Green  ·  oscura, verde esmeralda", "styles/aerogreen.qss"),
+    ("Aero Sunset  ·  oscura, cálida ámbar", "styles/aerosunset.qss"),
+    ("Aero Frost  ·  oscura, azul hielo", "styles/aerofrost.qss"),
+    ("Aero Organic  ·  oscura, verdes naturales", "styles/aeroorganic.qss"),
+)
+
+LIGHT_THEMES = frozenset({"styles/style.qss"})
+
+
+def _normalize(theme_path):
+    return str(theme_path or "").replace("\\", "/").lower().lstrip("./")
+
+
+def is_light_theme(theme_path):
+    """True si el tema indicado tiene fondo claro.
+
+    Solo lo usan los elementos que no son widgets de Qt (por ejemplo el lienzo
+    de Matplotlib), donde no se puede consultar la paleta real.
+    """
+    return _normalize(theme_path) in {_normalize(p) for p in LIGHT_THEMES}
+
+
+def repolish(widget):
+    """Vuelve a evaluar el QSS tras cambiar una propiedad dinamica.
+
+    Qt solo recalcula el estilo de una propiedad cambiada con setProperty()
+    cuando se Fuerza un re-polish del widget.
+    """
+    style = widget.style()
+    style.unpolish(widget)
+    style.polish(widget)
+    widget.update()
+
+
+def set_banner_state(label: QWidget, state: str, message: str = "") -> None:
+    """Actualiza un QLabel#StatusBanner con uno de los estados semanticos.
+
+    Estados validos: "info", "success", "warning", "error".
+    """
+    label.setProperty("state", state)
+    if message:
+        label.setText(message)
+    repolish(label)
 
 
 class AppSettings(QObject):
@@ -32,7 +82,7 @@ class AppSettings(QObject):
     # === Tema visual ===
     @property
     def theme_path(self):
-        return self._get("theme/path", "styles/style.qss")
+        return self._get("theme/path", DEFAULT_THEME) or DEFAULT_THEME
 
     @theme_path.setter
     def theme_path(self, value):

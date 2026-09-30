@@ -10,18 +10,21 @@ class Acerca(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(6)
 
         # Title
         title = QtWidgets.QLabel("Bunny Finance / Bunny Detect")
+        title.setObjectName("PageTitle")
         title.setAlignment(QtCore.Qt.AlignCenter)
-        title.setStyleSheet("font-size: 22px; font-weight: bold;")
         layout.addWidget(title)
 
         # Subtitle
         subtitle = QtWidgets.QLabel("Versión 1.0.0\n© 2026 Moises Gonzalez / Emmanuel Lara")
+        subtitle.setObjectName("Hint")
         subtitle.setAlignment(QtCore.Qt.AlignCenter)
-        subtitle.setStyleSheet("color: gray;")
         layout.addWidget(subtitle)
+
+        layout.addSpacing(8)
 
         # Scroll area
         scroll = QtWidgets.QScrollArea()
