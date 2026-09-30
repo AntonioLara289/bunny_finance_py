@@ -61,14 +61,14 @@ class MainWindow(QtWidgets.QMainWindow):
         atajos = [
             ("Ctrl+Q", lambda: self.close()),
             ("Ctrl+,", lambda: self.mostrarVistaPreferencias()),
-            ("Ctrl+1", lambda: self.mostrarVistaEscaneo()),
+            ("Ctrl+1", lambda: self.mostrarVistaInsightFacesRegister()),
             ("Ctrl+2", lambda: self.mostrarVistaAsistencia()),
             ("Ctrl+3", lambda: self.mostrarVistaSesiones()),
             ("Ctrl+4", lambda: self.mostrarVistaConsultas()),
             ("Ctrl+5", lambda: self.mostrarVistaHistorial()),
             ("Ctrl+6", lambda: self.mostrarVistaVisualizarEncodings()),
             ("Ctrl+7", lambda: self.mostrarVistaInsightFaces()),
-            ("Ctrl+8", lambda: self.mostrarVistaInsightFacesRegister()),
+            ("Ctrl+8", lambda: self.mostrarVistaEscaneo()),
         ]
         for secuencia, slot in atajos:
             accion = QAction(self)
