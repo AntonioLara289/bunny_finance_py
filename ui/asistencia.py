@@ -4,10 +4,9 @@ from PySide6.QtWidgets import (
     QSizePolicy, QFileDialog, QPushButton
 )
 from PySide6 import QtWidgets, QtCore
-from openpyxl import Workbook
-from openpyxl.utils import get_column_letter
 from ui.camaraInsightFaceWidget import CameraInsightFaceWidget, DB_PATH
 from ui.app_settings import AppSettings
+from core.services import ErrorServicio, ExcelService
 from database.db_manager import DBManager
 import sqlite3
 import numpy as np
@@ -217,6 +216,20 @@ class AsistenciaPantalla(QtWidgets.QWidget):
                 del self.recognition_timers[display_id]
 
     # Exportacion
+    def _filas_tabla(self):
+        """Filas de la tabla en el orden de las columnas del Excel."""
+        for row in range(self.table.rowCount()):
+            id_texto = self.table.item(row, 0)
+            nombre = self.table.item(row, 1)
+            similitud = self.table.item(row, 2)
+            combo = self.table.cellWidget(row, 3)
+            yield (
+                id_texto.text() if id_texto else "",
+                nombre.text() if nombre else "",
+                similitud.text() if similitud else "",
+                combo.currentText() if combo else "",
+            )
+
     def exportarExcel(self):
         path, _ = QFileDialog.getSaveFileName(
             self,
@@ -227,64 +240,15 @@ class AsistenciaPantalla(QtWidgets.QWidget):
         if not path:
             return
 
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Asistencias"
-
-        for col in range(self.table.columnCount()):
-            header = self.table.horizontalHeaderItem(col).text()
-            ws.cell(row=1, column=col + 1, value=header)
-
-        for row in range(self.table.rowCount()):
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row, col)
-                if item:
-                    ws.cell(row=row + 2, column=col + 1, value=item.text())
-                else:
-                    widget = self.table.cellWidget(row, col)
-                    if isinstance(widget, QComboBox):
-                        ws.cell(
-                            row=row + 2,
-                            column=col + 1,
-                            value=widget.currentText()
-                        )
-
-        for col in range(1, self.table.columnCount() + 1):
-            ws.column_dimensions[get_column_letter(col)].auto_size = True
-
-        wb.save(path)
+        self.exportarExcelTo(path)
 
     def exportarExcelTo(self, path):
-        # Same logic as exportarExcel but writing directly to `path`
-        if not path:
-            return
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Asistencias"
-
-        for col in range(self.table.columnCount()):
-            header = self.table.horizontalHeaderItem(col).text()
-            ws.cell(row=1, column=col + 1, value=header)
-
-        for row in range(self.table.rowCount()):
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row, col)
-                if item:
-                    ws.cell(row=row + 2, column=col + 1, value=item.text())
-                else:
-                    widget = self.table.cellWidget(row, col)
-                    if isinstance(widget, QComboBox):
-                        ws.cell(
-                            row=row + 2,
-                            column=col + 1,
-                            value=widget.currentText()
-                        )
-
-        for col in range(1, self.table.columnCount() + 1):
-            ws.column_dimensions[get_column_letter(col)].auto_size = True
-
-        wb.save(path)
+        # La escritura del xlsx vive en core.services para que la consola
+        # genere exactamente el mismo archivo que esta pantalla.
+        try:
+            ExcelService.exportar(self._filas_tabla(), path)
+        except ErrorServicio as exc:
+            print(f"[ERROR] {exc.mensaje}")
 
     def closeEvent(self, event):
         try:

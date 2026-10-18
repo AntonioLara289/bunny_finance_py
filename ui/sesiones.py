@@ -7,7 +7,7 @@ from PySide6.QtCore import QTime
 from PySide6.QtCore import Qt
 from ui.top_bar import TopBar
 from ui.asistencia import AsistenciaPantalla
-from database.db_manager import DBManager
+from core.services import ErrorServicio, SesionesService
 from log import log
 
 # Dialog para crear / editar sesión
@@ -72,7 +72,7 @@ class Sesiones(QWidget):
     def __init__(self):
         super().__init__()
         self.setAccessibleName("SesionesWidget")
-        self.db = DBManager()
+        self.sesiones_svc = SesionesService()
         self._setup_ui()
         self.row_id_map = {}
 
@@ -138,15 +138,15 @@ class Sesiones(QWidget):
         pass
 
     def _cargar_sesiones_db(self):
-        sesiones = self.db.getSesiones()
+        sesiones = self.sesiones_svc.listar()
 
         self.tabla_sesiones.setRowCount(len(sesiones))
 
-        for fila, (id_sesion, nombre, inicio_str, fin_str) in enumerate(sesiones):
-            self.row_id_map[fila] = id_sesion
-            inicio = QTime.fromString(inicio_str, "HH:mm")
-            fin = QTime.fromString(fin_str, "HH:mm")
-            self.tabla_sesiones.setItem(fila, 0, QTableWidgetItem(nombre))
+        for fila, sesion in enumerate(sesiones):
+            self.row_id_map[fila] = sesion.id
+            inicio = QTime.fromString(sesion.inicio, "HH:mm")
+            fin = QTime.fromString(sesion.fin, "HH:mm")
+            self.tabla_sesiones.setItem(fila, 0, QTableWidgetItem(sesion.nombre))
             self.tabla_sesiones.setItem(fila, 1, QTableWidgetItem(self._formatear_horario(inicio, fin)))
 
     def _formatear_horario(self, inicio, fin):
@@ -159,16 +159,16 @@ class Sesiones(QWidget):
         if dialog.exec():
             nombre, inicio, fin = dialog.datos()
 
-            # Guardar en DB (usar formato 24h HH:MM)
-            inicio_str = inicio.toString("HH:mm")
-            fin_str = fin.toString("HH:mm")
-            new_id = self.db.guardarSesion(nombre, inicio_str, fin_str)
+            # SesionesService normaliza y valida el horario (24h HH:MM)
+            sesion = self.sesiones_svc.crear(
+                nombre, inicio.toString("HH:mm"), fin.toString("HH:mm")
+            )
 
             fila = self.tabla_sesiones.rowCount()
             self.tabla_sesiones.insertRow(fila)
-            self.row_id_map[fila] = new_id
+            self.row_id_map[fila] = sesion.id
 
-            self.tabla_sesiones.setItem(fila, 0, QTableWidgetItem(nombre))
+            self.tabla_sesiones.setItem(fila, 0, QTableWidgetItem(sesion.nombre))
             self.tabla_sesiones.setItem(fila, 1, QTableWidgetItem(self._formatear_horario(inicio, fin)))
 
     def modificar_sesion(self):
@@ -176,26 +176,31 @@ class Sesiones(QWidget):
         if fila < 0:
             return
 
-        nombre_actual = self.tabla_sesiones.item(fila, 0).text()
-        horario_actual = self.tabla_sesiones.item(fila, 1).text()
+        id_sesion = self.row_id_map.get(fila)
+        if not id_sesion:
+            return
 
-        inicio_str, fin_str = horario_actual.split(" - ")
-        inicio = QTime.fromString(inicio_str, "hh:mm AP")
-        fin = QTime.fromString(fin_str, "hh:mm AP")
+        sesion = self.sesiones_svc.obtener(id_sesion)
+        if sesion is None:
+            return
 
-        dialog = SesionDialog(self, nombre_actual, inicio, fin)
+        dialog = SesionDialog(
+            self, sesion.nombre,
+            QTime.fromString(sesion.inicio, "HH:mm"),
+            QTime.fromString(sesion.fin, "HH:mm"),
+        )
 
         if dialog.exec():
             nombre, inicio, fin = dialog.datos()
 
-            # Actualizar en DB
-            id_sesion = self.row_id_map.get(fila)
-            if id_sesion:
-                inicio_db = inicio.toString("HH:mm")
-                fin_db = fin.toString("HH:mm")
-                self.db.actualizarSesion(id_sesion, nombre, inicio_db, fin_db)
+            actualizada = self.sesiones_svc.actualizar(
+                id_sesion,
+                nombre,
+                inicio.toString("HH:mm"),
+                fin.toString("HH:mm"),
+            )
 
-            self.tabla_sesiones.item(fila, 0).setText(nombre)
+            self.tabla_sesiones.item(fila, 0).setText(actualizada.nombre)
             self.tabla_sesiones.item(fila, 1).setText(self._formatear_horario(inicio, fin))
 
     def eliminar_sesion(self):
@@ -208,8 +213,9 @@ class Sesiones(QWidget):
             return
 
         try:
-            self.db.eliminarSesion(id_sesion)
-        except Exception:
+            self.sesiones_svc.eliminar(id_sesion)
+        except ErrorServicio as exc:
+            print(f"[ERROR] {exc.mensaje}")
             return
 
         self.tabla_sesiones.removeRow(fila)

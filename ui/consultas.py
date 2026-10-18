@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QTableWidget, QTableWidgetItem, QComboBox,
     QLabel, QVBoxLayout, QHBoxLayout, QFrame, QHeaderView, QSizePolicy
 )
-from database.db_manager import DBManager
+from core.services import ErrorServicio, PersonasService
 from log import log
 
 #log.push("Reconocimiento facial", "Juan identificado")
@@ -66,14 +66,14 @@ class Consultas(QtWidgets.QWidget):
         table_label.setObjectName("SectionTitle")
         table_layout.addWidget(table_label)
 
-        # Conexion a base de datos
-        self.dbManager = DBManager()
-        self.getPersonas = self.dbManager.getPersonas()
+        # PersonasService.listar() devuelve tambien las desactivadas. Antes se
+        # filtraba por "estatus = 1", con lo que una vez desactivada alguien
+        # desaparecia de la tabla y ya no se podia reactivar desde aqui.
+        self.personas_svc = PersonasService()
+        self.getPersonas = self.personas_svc.listar()
 
-        # Columnas reales de la tabla `personas`
-        # 0 id_persona | 1 nombre_persona | 2 imagen | 3 enc_izq | 4 enc_frente
-        # 5 enc_der    | 6 estatus       | 7 created_at
-        COL_ID, COL_NOMBRE, COL_ESTATUS, COL_FECHA = 0, 1, 6, 7
+        # Columnas de la tabla de la vista
+        COL_ID, COL_NOMBRE, COL_MUESTRAS, COL_FECHA, COL_ESTATUS = 0, 1, 2, 3, 4
 
         # Setup para la tabla
         rows = len(self.getPersonas)
@@ -82,7 +82,7 @@ class Consultas(QtWidgets.QWidget):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
         header.setSectionResizeMode(COL_ID, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(COL_ESTATUS, QHeaderView.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -90,20 +90,19 @@ class Consultas(QtWidgets.QWidget):
         self.table.setObjectName("DataTable")
 
         #  Llenado de la tabla
-        status_map_reverse = {1: "activado", 0: "desactivado", 2: "pendiente"}
         for row_idx, persona in enumerate(self.getPersonas):
-            self.table.setItem(row_idx, COL_ID, QTableWidgetItem(str(persona[COL_ID])))
-            self.table.setItem(row_idx, COL_NOMBRE, QTableWidgetItem(str(persona[COL_NOMBRE])))
-            self.table.setItem(row_idx, 2, QTableWidgetItem("1"))
-            self.table.setItem(row_idx, 3, QTableWidgetItem(str(persona[COL_FECHA])))
+            self.table.setItem(row_idx, COL_ID, QTableWidgetItem(str(persona.id)))
+            self.table.setItem(row_idx, COL_NOMBRE, QTableWidgetItem(str(persona.nombre)))
+            self.table.setItem(row_idx, COL_MUESTRAS, QTableWidgetItem("1"))
+            self.table.setItem(row_idx, COL_FECHA, QTableWidgetItem(str(persona.created_at)))
 
             status_combo = QComboBox()
             status_combo.addItems(["activado", "desactivado", "pendiente"])
-            status_combo.setCurrentText(status_map_reverse.get(persona[COL_ESTATUS], "desactivado"))
+            status_combo.setCurrentText(persona.estatus_texto)
             status_combo.currentTextChanged.connect(
-                lambda text, pid=persona[COL_ID]: self.update_status(pid, text)
+                lambda text, pid=persona.id: self.update_status(pid, text)
             )
-            self.table.setCellWidget(row_idx, 4, status_combo)
+            self.table.setCellWidget(row_idx, COL_ESTATUS, status_combo)
 
         table_layout.addWidget(self.table)
         main_layout.addWidget(table_frame, stretch=1)
@@ -120,5 +119,10 @@ class Consultas(QtWidgets.QWidget):
 
     # Actualizar estatus
     def update_status(self, person_id, new_status):
+        try:
+            persona = self.personas_svc.establecer_estatus(person_id, new_status)
+        except ErrorServicio as exc:
+            print(f"[ERROR] {exc.mensaje}")
+            return
         print(f"Actualizando ID {person_id} a {new_status}")
-        self.dbManager.update_status(person_id, new_status)
+        log.push("Estatus actualizado", f"{persona.nombre}: {persona.estatus_texto}")

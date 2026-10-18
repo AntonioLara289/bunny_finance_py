@@ -46,6 +46,7 @@ packaging==25.0
 pillow==11.2.1
 prettytable==3.17.0
 protobuf==4.25.7
+psutil==7.2.2
 pycparser==2.22
 pydantic==2.13.3
 pydantic_core==2.46.3

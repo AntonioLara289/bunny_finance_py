@@ -1,0 +1,50 @@
+{
+  "contexto": {
+    "proveedor": "CUDA (GPU NVIDIA)",
+    "modelo": "insightface buffalo_l",
+    "fecha": "2026-10-17 04:49:12"
+  },
+  "configuracion": {
+    "umbral_similitud": 0.4,
+    "confirmaciones_necesarias": 2,
+    "intervalo_deteccion": 5,
+    "resolucion_camara": "640x480"
+  },
+  "rendimiento": {
+    "fps_actual": 6.4038385462139065,
+    "fps_promedio": 5.729074250182791,
+    "duracion_s": 161.45714990000124,
+    "frames": 925,
+    "detecciones": 836,
+    "caras": 1136,
+    "matches": 836,
+    "desconocidos": 300,
+    "tasa_match": 0.7359154929577465,
+    "caras_por_frame": 1.228108108108108,
+    "latencia_media_ms": 106.33554918899176,
+    "latencia_mediana_ms": 86.44020001520403,
+    "latencia_p95_ms": 170.55302000371736,
+    "latencia_min_ms": 17.52570000826381,
+    "latencia_max_ms": 2369.2507999949157,
+    "latencia_std_ms": 174.6434217911227,
+    "muestras_latencia": 185,
+    "sim_media": 0.5280541540451453,
+    "sim_mediana": 0.640871524810791,
+    "sim_p95": 0.7465624809265137,
+    "sim_min": 0.0775991752743721,
+    "sim_max": 0.765627384185791,
+    "sim_std": 0.2183917742224755,
+    "muestras_sim": 1136
+  },
+  "sistema_ultimo": {
+    "cpu_proceso_pct": 55.7,
+    "cpu_sistema_pct": 6.7,
+    "ram_proceso_mb": 1664.83203125,
+    "ram_sistema_pct": 80.7,
+    "gpu_uso_pct": 28.0,
+    "gpu_mem_used_mb": 861.0,
+    "gpu_mem_total_mb": 4096.0,
+    "proveedor": "CUDA (GPU NVIDIA)"
+  },
+  "evaluacion_exactitud": null
+}

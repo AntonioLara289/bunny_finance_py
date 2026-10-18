@@ -2,12 +2,14 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSizePolicy
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 import os
+import time
 import cv2
 import numpy as np
 from insightface.app import FaceAnalysis
 from cv2_enumerate_cameras import enumerate_cameras
 from ui.dialogs.camarasDisponibles import CamarasDisponibles
 from ui.app_settings import AppSettings
+from core.metrics import MetricsCollector
 
 # BASE DE DATOS UTILIZADA
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "faces.db")
@@ -179,17 +181,26 @@ class CameraInsightFaceWidget(QWidget):
 
         self.frame_counter += 1
 
+        latency_ms = None
         if self.frame_counter % self.detection_interval == 0:
+            t0 = time.perf_counter()
             faces = self.app.get(frame)
+            latency_ms = (time.perf_counter() - t0) * 1000.0
             self.last_faces = faces
         else:
             faces = self.last_faces
 
+        sims_frame = []
+        matches_frame = 0
+        desconocidos_frame = 0
+
         for face in faces:
             name, sim, id_ = self.find_match_batch(face.embedding)
             box = face.bbox.astype(int)
+            sims_frame.append(sim)
 
             if sim >= self.SIMILARITY_THRESHOLD:
+                matches_frame += 1
                 color = (0, 255, 0)
                 label = f"{name} ({sim*100:.1f}%)"
 
@@ -203,6 +214,7 @@ class CameraInsightFaceWidget(QWidget):
                     self.personaConfirmada.emit(name, id_, sim_percent)
                     print(f"PERSONA CONFIRMADA: {name} - {sim_percent:.1f}%")
             else:
+                desconocidos_frame += 1
                 color = (0, 0, 255)
                 label = f"Desconocido ({sim*100:.1f}%)"
                 if id_ in self.confirmations:
@@ -213,6 +225,14 @@ class CameraInsightFaceWidget(QWidget):
             cv2.rectangle(frame, (box[0], box[1] - 25), (box[0] + label_w, box[1]), color, cv2.FILLED)
             cv2.putText(frame, label, (box[0] + 6, box[1] - 8),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+        MetricsCollector().register_frame(
+            latency_ms=latency_ms,
+            n_faces=len(faces),
+            best_sims=sims_frame,
+            matches=matches_frame,
+            unknowns=desconocidos_frame,
+        )
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb.shape

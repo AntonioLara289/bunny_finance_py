@@ -49,6 +49,12 @@
 - Multiples temas de estilo seleccionables desde Preferencias
 - Ventanas responsivas que se adaptan al tamano de pantalla
 
+### Control desde la terminal
+- Modo `-nogui` con consola interactiva y comandos de un solo uso
+- Sesiones, asistencias, estatus, roster y preferencias sin abrir la ventana
+- Exportacion a Excel y diagnostico de las bases de datos
+- Mismo codigo de salida que la interfaz, pensado para scripts
+
 ### Modulo Financiero
 - Calculos financieros integrados
 - Consultas y reportes
@@ -56,12 +62,71 @@
 
 ---
 
+### Modo consola (sin interfaz grafica)
+
+Todo el sistema se puede controlar desde la terminal con `-nogui`. Es la misma
+logica que usa la interfaz grafica, no una copia: las sesiones, las asistencias,
+el Excel y las preferencias salen de una capa de servicios comun.
+
+```bash
+# Consola interactiva
+python main.py -nogui
+
+# Un solo comando y salir (ideal para scripts)
+python main.py -nogui sesiones
+python main.py -nogui asistir "Moises" "Programacion II"
+
+# Catalogo de comandos
+python main.py -nogui --listar
+python main.py -nogui ayuda asistir
+```
+
+En la consola interactiva el prompt es `bunny>`, `ayuda` lista los comandos y
+`salir` termina. Los nombres con espacios van entrecomillados y `Ctrl+C`
+cancela la linea actual.
+
+| Grupo | Comandos |
+|-------|----------|
+| General | `ayuda`, `diagnostico`, `limpiar` |
+| Personas | `personas`, `persona`, `persona-nombre`, `persona-borrar` |
+| Rostros | `rostros`, `rostro`, `rostro-renombrar`, `rostro-borrar` |
+| Sesiones | `sesiones`, `sesion`, `sesion-activa`, `sesion-nueva`, `sesion-editar`, `sesion-borrar` |
+| Asistencia | `asistencia`, `asistir`, `faltar`, `desasistir`, `resumen`, `exportar`, `limpiar-asistencias` |
+| Ajustes | `ajustes`, `ajuste`, `ajustes-restaurar` |
+
+```bash
+python main.py -nogui diagnostico
+python main.py -nogui sesion-nueva "Algebra III" 08:00 09:00
+python main.py -nogui exportar "Programacion II"
+python main.py -nogui ajuste face/similarity_threshold 0.6
+```
+
+El codigo de salida es `0` si todo fue bien y `1` si algun comando fallo, asi
+que se puede usar en scripts. Los comandos que borran datos piden confirmacion.
+
+`diagnostico` compara el registro de personas con los rostros de `faces.db` y
+avisa de nombres duplicados y de asistencias repetidas.
+
+> En Windows el modulo `readline` no viene de serie, asi que el historial con
+> las flechas no funciona. Opcional: `pip install pyreadline3`.
+
+---
+
 ## Arquitectura del Proyecto
 
 ```
 bunny_finance_py/
-├── main.py                     # Punto de entrada de la aplicacion
+├── main.py                     # Punto de entrada: GUI o consola (-nogui)
 ├── faces.db                    # Base de datos SQLite (encodings + personas)
+├── core/                       # Logica de negocio, sin Qt
+│   ├── paths.py                # Rutas absolutas del proyecto
+│   └── services.py             # Personas, rostros, sesiones, asistencia,
+│                               #   preferencias y exportacion a Excel
+├── cli/                        # Consola de terminal
+│   ├── __main__.py             # Arranque y codigo de salida
+│   ├── commands.py             # Catalogo de comandos
+│   ├── console.py              # Tablas y mensajes
+│   └── repl.py                 # Bucle interactivo
 ├── database/
 │   └── db_manager.py           # Gestor de base de datos financiera
 ├── ui/
@@ -115,6 +180,9 @@ pip install -r requirements-insightface.txt
 
 # 4. Ejecutar la aplicacion
 python main.py
+
+# ...o la consola de control
+python main.py -nogui
 ```
 
 > **Nota:** Los modelos de InsightFace se descargan automaticamente en la primera ejecucion.
@@ -145,6 +213,7 @@ python main.py
 - [x] Visualizacion UMAP de encodings
 - [x] Gestion de sesiones y asistencias
 - [x] Temas y estilos personalizables
+- [x] Consola de control sin interfaz grafica (`-nogui`)
 - [ ] Exportacion de reportes PDF
 - [ ] Soporte para multiples camaras simultaneas
 - [ ] Dashboard con metricas en tiempo real

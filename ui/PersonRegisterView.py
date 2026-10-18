@@ -174,12 +174,14 @@ class PersonRegisterView(QtWidgets.QWidget):
         )
         self.image_label.setPixmap(scaled_pixmap)
 
+    # Captura de rostro
     def capture_face(self):
+        # Revisar que exista una camara
         if self.current_frame is None:
             set_banner_state(self.status, "warning", "Esperando cámara...")
             return
 
-        faces = self.app.get(self.current_frame)
+        faces = self.app.get(self.current_frame) 
 
         if len(faces) == 0:
             set_banner_state(self.status, "error", "No se detectó rostro")

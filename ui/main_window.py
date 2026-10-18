@@ -15,7 +15,8 @@ from ui.PersonRegisterView import PersonRegisterView
 from ui.sesiones import Sesiones
 from ui.animated_menu import AnimatedMenu
 from ui.acerca import Acerca
-from database.db_manager import DBManager
+from ui.monitoreo import MonitoreoWindow
+from core.services import Core
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -47,7 +48,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._crear_atajos()
 
         # Sistema global de sesiones automáticas
-        self.db = DBManager()
+        # Core da acceso a todos los servicios (sesiones, asistencia, ...)
+        self.core = Core()
         self.active_session_id = None
         self._saved_attendance = set()
         self._prior_vista = None  # guardar vista anterior antes de sesión
@@ -69,6 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ("Ctrl+6", lambda: self.mostrarVistaVisualizarEncodings()),
             ("Ctrl+7", lambda: self.mostrarVistaInsightFaces()),
             ("Ctrl+8", lambda: self.mostrarVistaEscaneo()),
+            ("Ctrl+9", lambda: self.mostrarVistaMonitoreo()),
         ]
         for secuencia, slot in atajos:
             accion = QAction(self)
@@ -178,6 +181,16 @@ class MainWindow(QtWidgets.QMainWindow):
             text="Registro de rostro (Obsoleto)",
             tip="Escaneo de rostro con cámara",
             slot=self.mostrarVistaEscaneo,
+        )
+
+        menu.addSeparator()
+
+        # Monitoreo de rendimiento y exactitud (ventana independiente)
+        self._add_action(
+            menu,
+            text="Monitoreo del sistema",
+            tip="Abre una ventana aparte con métricas de rendimiento y exactitud",
+            slot=self.mostrarVistaMonitoreo,
         )
 
     def _crear_menu_data(self, menu) -> None:
@@ -298,24 +311,35 @@ class MainWindow(QtWidgets.QMainWindow):
         print("Mostrando vista acerca")
         self._cambiar_vista(Acerca)
 
+    def mostrarVistaMonitoreo(self) -> None:
+        """Abre la ventana de monitoreo en una ventana independiente (singleton)."""
+        print("Mostrando ventana de monitoreo")
+        ventana = getattr(self, "_monitoreo_window", None)
+        if ventana is not None:
+            try:
+                ventana.raise_()
+                ventana.activateWindow()
+                return
+            except RuntimeError:
+                # El objeto C++ ya fue destruido (ventana cerrada)
+                self._monitoreo_window = None
+
+        self._monitoreo_window = MonitoreoWindow()
+        self._monitoreo_window.destroyed.connect(
+            lambda *_: setattr(self, "_monitoreo_window", None)
+        )
+        self._monitoreo_window.show()
+        self._monitoreo_window.raise_()
+        self._monitoreo_window.activateWindow()
+
     # SESIONES AUTOMÁTICAS
 
     def _check_sessions_global(self) -> None:
         """Revisa si hay una sesión activa en este momento y navega automáticamente"""
-        ahora = datetime.now().time()
-        sesiones = self.db.getSesiones()
-        found_active = None
-        for id_sesion, nombre, inicio_str, fin_str in sesiones:
-            try:
-                inicio_time = datetime.strptime(inicio_str, "%H:%M").time()
-                fin_time = datetime.strptime(fin_str, "%H:%M").time()
-            except Exception:
-                continue
-
-            # Caso normal: inicio <= ahora < fin
-            if inicio_time <= ahora < fin_time:
-                found_active = (id_sesion, nombre)
-                break
+        # SesionesService.activa() aplica el mismo criterio que antes
+        # (inicio <= ahora < fin) y es el que también usa la consola.
+        sesion_activa = self.core.sesiones.activa()
+        found_active = (sesion_activa.id, sesion_activa.nombre) if sesion_activa else None
 
         # Si hay una sesión activa y no está ya abierta, navegar a asistencia
         if found_active and self.active_session_id != found_active[0]:
@@ -381,7 +405,7 @@ class MainWindow(QtWidgets.QMainWindow):
         nuevos = self.pantallaMostrandose.attendance_given - self._saved_attendance
         for persona_id in nuevos:
             try:
-                self.db.guardarAsistencia(persona_id, self.active_session_id, True)
+                self.core.asistencias.registrar(persona_id, self.active_session_id, True)
             except Exception:
                 pass
             self._saved_attendance.add(persona_id)
